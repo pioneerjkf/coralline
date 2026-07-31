@@ -1,0 +1,20 @@
+name: coralline
+description: "An elegant Dart library implementing Chain of Reactivity and Lazy-computation as a Pipeline."
+
+publish_to: none
+
+resolution: workspace
+
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  meta: ^1.18.3
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.24.0
+
+
