@@ -1,3 +1,7 @@
+## 0.1.1
+
+- Align `meta` package version constraint (`^1.18.0`) for maximum Flutter and Dart SDK compatibility.
+
 ## 0.1.0
 
 - Initial release of official Coralline extension library.
