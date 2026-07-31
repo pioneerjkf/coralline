@@ -5,7 +5,8 @@
 import 'package:collection/collection.dart';
 import 'package:coralline/coralline.dart';
 
-extension NumericCoralElementsExtension<E extends num> on CoralIterableElements<E> {
+extension NumericCoralElementsExtension<E extends num>
+    on CoralIterableElements<E> {
   /// Returns the minimum element in this collection, or null if empty.
   Coral<E?> get minOrNull => coral.map((source) => source.minOrNull as E?);
 

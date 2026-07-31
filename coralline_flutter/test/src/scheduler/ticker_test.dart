@@ -17,7 +17,8 @@ base class _TestSingleTickerLifecycleAware
         CorallineBuildContextAware,
         SingleTickerProviderCorallineLifecycleAwareMixin {}
 
-base class _TestContextAwareMultiTickerComputation extends ComplexComputation<Widget>
+base class _TestContextAwareMultiTickerComputation
+    extends ComplexComputation<Widget>
     with
         CorallineLifecycleAware,
         CorallineTerminalIntentAware,
@@ -39,7 +40,8 @@ base class _TestContextAwareMultiTickerComputation extends ComplexComputation<Wi
   Widget compute() => const SizedBox();
 }
 
-base class _TestContextAwareSingleTickerComputation extends ComplexComputation<Widget>
+base class _TestContextAwareSingleTickerComputation
+    extends ComplexComputation<Widget>
     with
         CorallineLifecycleAware,
         CorallineTerminalIntentAware,
@@ -66,54 +68,55 @@ void main() {
 
   group('TickerProviderCorallineLifecycleAwareMixin Tests', () {
     test('createTicker creates and manages multiple tickers', () {
-      final Computation = _TestMultiTickerLifecycleAware();
-      final ticker1 = Computation.createTicker((elapsed) {});
-      final ticker2 = Computation.createTicker((elapsed) {});
+      final computation = _TestMultiTickerLifecycleAware();
+      final ticker1 = computation.createTicker((elapsed) {});
+      final ticker2 = computation.createTicker((elapsed) {});
 
       expect(ticker1, isNotNull);
       expect(ticker2, isNotNull);
       expect(ticker1, isNot(same(ticker2)));
 
-      Computation.didDeactivate();
+      computation.didDeactivate();
     });
 
     test('didPause and didResume mute and unmute tickers', () {
-      final Computation = _TestMultiTickerLifecycleAware();
-      final ticker = Computation.createTicker((elapsed) {});
+      final computation = _TestMultiTickerLifecycleAware();
+      final ticker = computation.createTicker((elapsed) {});
 
       expect(ticker.muted, false);
-      Computation.didPause();
+      computation.didPause();
       expect(ticker.muted, true);
-      Computation.didResume();
+      computation.didResume();
       expect(ticker.muted, false);
 
-      Computation.didDeactivate();
+      computation.didDeactivate();
     });
 
     test('didDeactivate disposes created tickers', () {
-      final Computation = _TestMultiTickerLifecycleAware();
-      final ticker = Computation.createTicker((elapsed) {});
+      final computation = _TestMultiTickerLifecycleAware();
+      final ticker = computation.createTicker((elapsed) {});
 
       expect(ticker.isActive, false);
-      Computation.didDeactivate();
+      computation.didDeactivate();
     });
 
     test('didDeactivate asserts when an active ticker exists', () {
-      final Computation = _TestMultiTickerLifecycleAware();
-      final ticker = Computation.createTicker((elapsed) {});
+      final computation = _TestMultiTickerLifecycleAware();
+      final ticker = computation.createTicker((elapsed) {});
       ticker.start();
 
       expect(ticker.isActive, true);
       expect(
-        () => Computation.didDeactivate(),
+        () => computation.didDeactivate(),
         throwsA(isA<AssertionError>()),
       );
 
       ticker.stop();
-      Computation.didDeactivate();
+      computation.didDeactivate();
     });
 
-    testWidgets('TickerMode updates mute status when wrapped in CorallineBuildContextAware',
+    testWidgets(
+        'TickerMode updates mute status when wrapped in CorallineBuildContextAware',
         (tester) async {
       final computation = _TestContextAwareMultiTickerComputation();
 
@@ -144,49 +147,49 @@ void main() {
 
   group('SingleTickerProviderCorallineLifecycleAwareMixin Tests', () {
     test('createTicker creates a single ticker successfully', () {
-      final Computation = _TestSingleTickerLifecycleAware();
-      final ticker = Computation.createTicker((elapsed) {});
+      final computation = _TestSingleTickerLifecycleAware();
+      final ticker = computation.createTicker((elapsed) {});
 
       expect(ticker, isNotNull);
-      Computation.didDeactivate();
+      computation.didDeactivate();
     });
 
     test('didPause and didResume mute and unmute ticker', () {
-      final Computation = _TestSingleTickerLifecycleAware();
-      final ticker = Computation.createTicker((elapsed) {});
+      final computation = _TestSingleTickerLifecycleAware();
+      final ticker = computation.createTicker((elapsed) {});
 
       expect(ticker.muted, false);
-      Computation.didPause();
+      computation.didPause();
       expect(ticker.muted, true);
-      Computation.didResume();
+      computation.didResume();
       expect(ticker.muted, false);
 
-      Computation.didDeactivate();
+      computation.didDeactivate();
     });
 
     test('createTicker asserts when multiple tickers are created', () {
-      final Computation = _TestSingleTickerLifecycleAware();
-      Computation.createTicker((elapsed) {});
+      final computation = _TestSingleTickerLifecycleAware();
+      computation.createTicker((elapsed) {});
 
       expect(
-        () => Computation.createTicker((elapsed) {}),
+        () => computation.createTicker((elapsed) {}),
         throwsA(isA<AssertionError>()),
       );
     });
 
     test('didDeactivate asserts when active ticker exists', () {
-      final Computation = _TestSingleTickerLifecycleAware();
-      final ticker = Computation.createTicker((elapsed) {});
+      final computation = _TestSingleTickerLifecycleAware();
+      final ticker = computation.createTicker((elapsed) {});
       ticker.start();
 
       expect(ticker.isActive, true);
       expect(
-        () => Computation.didDeactivate(),
+        () => computation.didDeactivate(),
         throwsA(isA<AssertionError>()),
       );
 
       ticker.stop();
-      Computation.didDeactivate();
+      computation.didDeactivate();
     });
 
     testWidgets(
@@ -218,7 +221,8 @@ void main() {
       expect(computation.ticker!.muted, true);
     });
 
-    testWidgets('didPause and didResume interact correctly with TickerMode', (tester) async {
+    testWidgets('didPause and didResume interact correctly with TickerMode',
+        (tester) async {
       final computation = _TestContextAwareSingleTickerComputation();
 
       await tester.pumpWidget(

@@ -1,0 +1,14 @@
+# Dart & Flutter artifacts
+.dart_tool/
+.packages
+pubspec.lock
+
+# Build and cache outputs
+build/
+.pub/
+.pub-cache/
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.iml

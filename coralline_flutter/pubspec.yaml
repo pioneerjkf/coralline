@@ -1,7 +1,14 @@
 name: coralline_flutter
 description: "A reactive state management framework for Flutter based on chain of reactivity and lazy computation pipeline."
 
-publish_to: none
+repository: https://github.com/pioneerjkf/coralline
+issue_tracker: https://github.com/pioneerjkf/coralline/issues
+topics:
+  - flutter
+  - state-management
+  - reactivity
+  - widgets
+  - ui
 
 resolution: workspace
 
@@ -21,9 +28,9 @@ dependencies:
   
   meta: ^1.19.0
 
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+

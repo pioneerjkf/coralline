@@ -13,7 +13,8 @@ void main() {
     // 1. MediaQuery Proxy & Extensions
     // =========================================================================
     group('MediaQueryProxy Tests', () {
-      testWidgets('observes all mediaQuery properties reactively', (WidgetTester tester) async {
+      testWidgets('observes all mediaQuery properties reactively',
+          (WidgetTester tester) async {
         final computation = _TestMediaQueryComputation();
 
         Widget buildWidget(MediaQueryData data) {
@@ -40,10 +41,14 @@ void main() {
         expect(computation.dataCoral.data, equals(initialData));
         expect(computation.sizeCoral.data, equals(const Size(800, 600)));
         expect(computation.paddingCoral.data, equals(const EdgeInsets.all(10)));
-        expect(computation.viewInsetsCoral.data, equals(const EdgeInsets.all(20)));
-        expect(computation.viewPaddingCoral.data, equals(const EdgeInsets.all(15)));
-        expect(computation.orientationCoral.data, equals(Orientation.landscape));
-        expect(computation.platformBrightnessCoral.data, equals(Brightness.dark));
+        expect(
+            computation.viewInsetsCoral.data, equals(const EdgeInsets.all(20)));
+        expect(computation.viewPaddingCoral.data,
+            equals(const EdgeInsets.all(15)));
+        expect(
+            computation.orientationCoral.data, equals(Orientation.landscape));
+        expect(
+            computation.platformBrightnessCoral.data, equals(Brightness.dark));
         expect(computation.devicePixelRatioCoral.data, equals(2.0));
 
         const updatedData = MediaQueryData(
@@ -61,7 +66,8 @@ void main() {
         expect(computation.sizeCoral.data, equals(const Size(400, 800)));
         expect(computation.paddingCoral.data, equals(const EdgeInsets.all(5)));
         expect(computation.orientationCoral.data, equals(Orientation.portrait));
-        expect(computation.platformBrightnessCoral.data, equals(Brightness.light));
+        expect(
+            computation.platformBrightnessCoral.data, equals(Brightness.light));
         expect(computation.devicePixelRatioCoral.data, equals(3.0));
       });
     });
@@ -70,7 +76,8 @@ void main() {
     // 2. Localization Proxy & Text Directionality
     // =========================================================================
     group('LocalizationProxy Tests', () {
-      testWidgets('observes locale and text direction reactively', (WidgetTester tester) async {
+      testWidgets('observes locale and text direction reactively',
+          (WidgetTester tester) async {
         final computation = _TestLocalizationComputation();
 
         Widget buildWidget(Locale locale, TextDirection direction) {
@@ -90,13 +97,15 @@ void main() {
           );
         }
 
-        await tester.pumpWidget(buildWidget(const Locale('en'), TextDirection.ltr));
+        await tester
+            .pumpWidget(buildWidget(const Locale('en'), TextDirection.ltr));
         await tester.pump();
 
         expect(computation.localeCoral.data, equals(const Locale('en')));
         expect(computation.directionCoral.data, equals(TextDirection.ltr));
 
-        await tester.pumpWidget(buildWidget(const Locale('fr'), TextDirection.rtl));
+        await tester
+            .pumpWidget(buildWidget(const Locale('fr'), TextDirection.rtl));
         await tester.pump();
 
         expect(computation.localeCoral.data, equals(const Locale('fr')));
@@ -108,7 +117,8 @@ void main() {
     // 3. Text Proxy & DefaultTextStyle
     // =========================================================================
     group('TextProxy Tests', () {
-      testWidgets('observes default text style reactively', (WidgetTester tester) async {
+      testWidgets('observes default text style reactively',
+          (WidgetTester tester) async {
         final computation = _TestTextComputation();
 
         Widget buildWidget(TextStyle style) {
@@ -136,7 +146,8 @@ void main() {
     // 4. Scope Proxy (Focus, Form, PrimaryScrollController, Navigator, Overlay, Scrollable)
     // =========================================================================
     group('ScopeProxy Tests', () {
-      testWidgets('observes FocusScopeNode reactively', (WidgetTester tester) async {
+      testWidgets('observes FocusScopeNode reactively',
+          (WidgetTester tester) async {
         final computation = _TestFocusScopeComputation();
 
         await tester.pumpWidget(
@@ -149,7 +160,8 @@ void main() {
         expect(computation.focusCoral.data, isNotNull);
       });
 
-      testWidgets('observes FormState (present vs null)', (WidgetTester tester) async {
+      testWidgets('observes FormState (present vs null)',
+          (WidgetTester tester) async {
         final computation = _TestFormScopeComputation();
 
         // Outside Form
@@ -176,7 +188,8 @@ void main() {
         expect(insideComputation.formCoral.data, isNotNull);
       });
 
-      testWidgets('observes PrimaryScrollController, Navigator, Overlay, Scrollable',
+      testWidgets(
+          'observes PrimaryScrollController, Navigator, Overlay, Scrollable',
           (WidgetTester tester) async {
         final computation = _TestScopeControllersComputation();
         final controller = ScrollController();
@@ -205,15 +218,14 @@ void main() {
 
         controller.dispose();
       });
-
-
     });
 
     // =========================================================================
     // 5. IconTheme Extension
     // =========================================================================
     group('IconThemeExtension Tests', () {
-      testWidgets('observes IconThemeData reactively', (WidgetTester tester) async {
+      testWidgets('observes IconThemeData reactively',
+          (WidgetTester tester) async {
         final computation = _TestIconThemeComputation();
 
         Widget buildWidget(Color color) {

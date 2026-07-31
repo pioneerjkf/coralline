@@ -27,7 +27,8 @@ extension type CoralBuildContextThemeProxy._(Coral<BuildContext> _coral) {
   ///
   /// **AI & Developer Note:**
   /// Always cache derived line nodes as `late final` fields to prevent dormant access errors.
-  Coral<ColorScheme> get colorScheme => _coral.map((e) => Theme.of(e).colorScheme).distinct();
+  Coral<ColorScheme> get colorScheme =>
+      _coral.map((e) => Theme.of(e).colorScheme).distinct();
 
   /// Reactively observes the current [TextTheme].
   ///
@@ -36,11 +37,13 @@ extension type CoralBuildContextThemeProxy._(Coral<BuildContext> _coral) {
   ///
   /// **AI & Developer Note:**
   /// Always cache derived line nodes as `late final` fields to prevent dormant access errors.
-  Coral<TextTheme> get textTheme => _coral.map((e) => Theme.of(e).textTheme).distinct();
+  Coral<TextTheme> get textTheme =>
+      _coral.map((e) => Theme.of(e).textTheme).distinct();
 
   /// Reactively observes the current [IconThemeData].
   ///
   /// **Ensures:**
   /// * Emits updated [IconThemeData] derived from the active element context.
-  Coral<IconThemeData> get iconTheme => _coral.map((e) => IconTheme.of(e)).distinct();
+  Coral<IconThemeData> get iconTheme =>
+      _coral.map((e) => IconTheme.of(e)).distinct();
 }

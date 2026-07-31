@@ -171,7 +171,8 @@ class CoralWidget extends Widget {
   final Coral<Widget> coral;
 
   /// An optional builder function rendering a fallback UI if the pipeline enters a damaged state.
-  final Widget Function(BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder;
+  final Widget Function(
+      BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder;
 
   @override
   CoralWidgetElement createElement() => CoralWidgetElement(this);
@@ -202,7 +203,8 @@ base class CoralWidgetElement extends ComponentElement {
     onDirty: markNeedsBuild,
   );
 
-  late final CoralCoupler<Widget> _coupler = CoralCoupler<Widget>.late(seal: false, hotswap: true);
+  late final CoralCoupler<Widget> _coupler =
+      CoralCoupler<Widget>.late(seal: false, hotswap: true);
 
   /// Tracks inherited element dependencies for fine-grained flushing during pipeline hot-swapping.
   final Set<InheritedElement> _trackedDependencies = {};
@@ -282,7 +284,8 @@ base class CoralWidgetElement extends ComponentElement {
   }
 
   @override
-  InheritedWidget dependOnInheritedElement(InheritedElement ancestor, {Object? aspect}) {
+  InheritedWidget dependOnInheritedElement(InheritedElement ancestor,
+      {Object? aspect}) {
     final result = super.dependOnInheritedElement(ancestor, aspect: aspect);
     _trackedDependencies.add(ancestor);
     return result;
@@ -347,7 +350,8 @@ base class CoralWidgetTerminalIntent extends CorallineTerminalIntent {
   final BuildContext _context;
 
   /// Creates a new intent carrying the given element [BuildContext].
-  CoralWidgetTerminalIntent({required BuildContext context}) : _context = context;
+  CoralWidgetTerminalIntent({required BuildContext context})
+      : _context = context;
 
   /// The internal controller emitting active element [BuildContext] updates.
   ///
@@ -361,7 +365,8 @@ base class CoralWidgetTerminalIntent extends CorallineTerminalIntent {
   /// **Constraints:**
   /// This must stream valid, active [BuildContext] objects and update them whenever
   /// [CoralWidgetElement.didChangeDependencies] is triggered.
-  late final CoralProvider<BuildContext> contextProvider = _contextController.provider;
+  late final CoralProvider<BuildContext> contextProvider =
+      _contextController.provider;
 }
 
 /// A mixin enabling a [CoralComputation] to receive [BuildContext] updates from a [CoralWidget].
@@ -455,8 +460,10 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
       Zone.current.handleUncaughtError(error, stackTrace);
     }
 
-    final finalOldIntent = oldIntent is CoralWidgetTerminalIntent ? oldIntent : null;
-    final finalNewIntent = newIntent is CoralWidgetTerminalIntent ? newIntent : null;
+    final finalOldIntent =
+        oldIntent is CoralWidgetTerminalIntent ? oldIntent : null;
+    final finalNewIntent =
+        newIntent is CoralWidgetTerminalIntent ? newIntent : null;
 
     if (finalNewIntent != null) {
       _contextCoupler.couple(finalNewIntent.contextProvider.coral);
@@ -506,7 +513,8 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   ///   // Perform setup or cleanup on element binding transition
   /// }
   /// ```
-  void didUpdateBuildContext(BuildContext? oldContext, BuildContext? newContext) {}
+  void didUpdateBuildContext(
+      BuildContext? oldContext, BuildContext? newContext) {}
 
   /// Creates a reactive [Coral] pipeline subscribing to an [InheritedWidget] of type [T] from the element tree.
   ///
@@ -531,7 +539,9 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   @protected
   @pragma('vm:prefer-inline')
   Coral<T> dependOn<T extends InheritedWidget>({Object? aspect}) {
-    return context.map((e) => e.dependOnInheritedWidgetOfExactType<T>(aspect: aspect)!).distinct();
+    return context
+        .map((e) => e.dependOnInheritedWidgetOfExactType<T>(aspect: aspect)!)
+        .distinct();
   }
 
   /// Creates a null-safe reactive [Coral] pipeline subscribing to an optional [InheritedWidget] of type [T].
@@ -551,7 +561,9 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   @protected
   @pragma('vm:prefer-inline')
   Coral<T?> maybeDependOn<T extends InheritedWidget>({Object? aspect}) {
-    return context.map((e) => e.dependOnInheritedWidgetOfExactType<T>(aspect: aspect)).distinct();
+    return context
+        .map((e) => e.dependOnInheritedWidgetOfExactType<T>(aspect: aspect))
+        .distinct();
   }
 
   /// Reactively subscribes to an ancestor [InheritedCoralProviderWidget] and unwraps its inner [Coral<T>] state.
@@ -586,7 +598,8 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   @protected
   @pragma('vm:prefer-inline')
   Coral<T> coralOf<T>() {
-    return dependOn<InheritedCoralProviderWidget<T>>().cascade((data) => data.provider.coral);
+    return dependOn<InheritedCoralProviderWidget<T>>()
+        .cascade((data) => data.provider.coral);
   }
 
   /// Reactively subscribes to an optional ancestor [InheritedCoralProviderWidget] and unwraps its inner [Coral<T?>] state.
@@ -649,7 +662,8 @@ base class InheritedCoralProvider<T> extends SimplexBuildComponent {
   CoralNode manifest() => providerCoral;
 
   @override
-  Widget build() => InheritedCoralProviderWidget<T>(provider: providerCoral.data, child: child);
+  Widget build() => InheritedCoralProviderWidget<T>(
+      provider: providerCoral.data, child: child);
 }
 
 /// An [InheritedWidget] wrapper that provides a [CoralProvider<T>] to descendant widgets in the element tree.
@@ -760,7 +774,8 @@ class InheritedCoralProviderWidget<T> extends InheritedWidget {
 
 /// A convenience extension for converting a [CoralComputation] of [Widget]s directly into
 /// a strongly-typed [CoralWidget], preserving the specific generic type `<T>`.
-extension CoralComputationWidgetExtension<T extends CoralComputation<Widget>> on T {
+extension CoralComputationWidgetExtension<T extends CoralComputation<Widget>>
+    on T {
   /// Converts this Computation into a strongly-typed [CoralWidget].
   ///
   /// * [key]: Optional key for the [CoralWidget].
@@ -796,7 +811,8 @@ extension CoralComputationWidgetExtension<T extends CoralComputation<Widget>> on
   /// ```
   CoralWidget toWidget({
     Key? key,
-    Widget Function(BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder,
+    Widget Function(BuildContext context, Object error, StackTrace? stackTrace)?
+        errorBuilder,
   }) {
     return CoralWidget(key: key, coral: coral, errorBuilder: errorBuilder);
   }
@@ -819,7 +835,8 @@ extension CoralWidgetExtension on Coral<Widget> {
   /// ```
   CoralWidget toWidget({
     Key? key,
-    Widget Function(BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder,
+    Widget Function(BuildContext context, Object error, StackTrace? stackTrace)?
+        errorBuilder,
   }) =>
       CoralWidget(key: key, coral: this, errorBuilder: errorBuilder);
 }
@@ -841,7 +858,8 @@ extension CoralWidgetProviderExtension on CoralProvider<Widget> {
   /// ```
   CoralWidget toWidget({
     Key? key,
-    Widget Function(BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder,
+    Widget Function(BuildContext context, Object error, StackTrace? stackTrace)?
+        errorBuilder,
   }) =>
       CoralWidget(key: key, coral: coral, errorBuilder: errorBuilder);
 }
@@ -933,6 +951,7 @@ extension CoralProviderInheritedWidgetExtension<T> on CoralProvider<T> {
   /// final CoralProvider<CounterState> provider = ...;
   /// final widget = provider.toInheritedWidget(child: const MyApp());
   /// ```
-  InheritedCoralProviderWidget<T> toInheritedWidget({Key? key, required Widget child}) =>
+  InheritedCoralProviderWidget<T> toInheritedWidget(
+          {Key? key, required Widget child}) =>
       InheritedCoralProviderWidget<T>(key: key, provider: this, child: child);
 }

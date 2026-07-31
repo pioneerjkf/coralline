@@ -5,7 +5,8 @@ import 'package:test/test.dart';
 void main() {
   group('NumericCoralElementsExtension', () {
     test('sum and average compute numeric elements reactively', () {
-      final controller = CoralController<List<double>>([1.5, 2.5, 4.0], broadcast: true);
+      final controller =
+          CoralController<List<double>>([1.5, 2.5, 4.0], broadcast: true);
 
       final sumCoral = controller.coral.elements.sum;
       final avgCoral = controller.coral.elements.average;

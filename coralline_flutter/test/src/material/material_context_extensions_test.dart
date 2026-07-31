@@ -44,7 +44,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Theme(
-            data: ThemeData(colorScheme: const ColorScheme.light(primary: Colors.red)),
+            data: ThemeData(
+                colorScheme: const ColorScheme.light(primary: Colors.red)),
             child: computation.toWidget(),
           ),
         ),
@@ -52,13 +53,15 @@ void main() {
       await tester.pump();
 
       expect(computation.colorSchemeCoral.data.primary, Colors.red);
-      expect(find.text('PrimaryColor: ${Colors.red.toARGB32()}'), findsOneWidget);
+      expect(
+          find.text('PrimaryColor: ${Colors.red.toARGB32()}'), findsOneWidget);
 
       // Change Theme ColorScheme
       await tester.pumpWidget(
         MaterialApp(
           home: Theme(
-            data: ThemeData(colorScheme: const ColorScheme.light(primary: Colors.blue)),
+            data: ThemeData(
+                colorScheme: const ColorScheme.light(primary: Colors.blue)),
             child: computation.toWidget(),
           ),
         ),
@@ -66,7 +69,8 @@ void main() {
       await tester.pump();
 
       expect(computation.colorSchemeCoral.data.primary, Colors.blue);
-      expect(find.text('PrimaryColor: ${Colors.blue.toARGB32()}'), findsOneWidget);
+      expect(
+          find.text('PrimaryColor: ${Colors.blue.toARGB32()}'), findsOneWidget);
     });
 
     testWidgets('observes scaffold.state and scaffold.messenger reactively',

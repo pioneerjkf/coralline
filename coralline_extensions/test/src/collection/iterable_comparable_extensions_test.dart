@@ -5,7 +5,8 @@ import 'package:test/test.dart';
 void main() {
   group('ComparableCoralElementsExtension', () {
     test('maxOrNull and minOrNull compute comparable elements reactively', () {
-      final controller = CoralController<List<int>>([5, 3, 9, 1, 7], broadcast: true);
+      final controller =
+          CoralController<List<int>>([5, 3, 9, 1, 7], broadcast: true);
 
       final maxCoral = controller.coral.elements.maxOrNull;
       final minCoral = controller.coral.elements.minOrNull;
@@ -30,8 +31,11 @@ void main() {
       termMin.deactivate();
     });
 
-    test('max and min compute comparable elements reactively and throw when empty', () {
-      final controller = CoralController<List<int>>([5, 3, 9, 1, 7], broadcast: true);
+    test(
+        'max and min compute comparable elements reactively and throw when empty',
+        () {
+      final controller =
+          CoralController<List<int>>([5, 3, 9, 1, 7], broadcast: true);
 
       final maxCoral = controller.coral.elements.max;
       final minCoral = controller.coral.elements.min;
@@ -59,7 +63,8 @@ void main() {
     });
 
     test('isSorted detects sorted state reactively', () {
-      final controller = CoralController<List<int>>([1, 2, 3, 4, 5], broadcast: true);
+      final controller =
+          CoralController<List<int>>([1, 2, 3, 4, 5], broadcast: true);
       final isSortedCoral = controller.coral.elements.isSorted();
 
       final term = isSortedCoral.toTerminal(() {});
@@ -80,7 +85,8 @@ void main() {
     });
 
     test('sorted and sortedDescending produce sorted lists reactively', () {
-      final controller = CoralController<List<int>>([5, 3, 9, 1, 7], broadcast: true);
+      final controller =
+          CoralController<List<int>>([5, 3, 9, 1, 7], broadcast: true);
       final sortedCoral = controller.coral.elements.sorted;
       final sortedDescCoral = controller.coral.elements.sortedDescending;
 

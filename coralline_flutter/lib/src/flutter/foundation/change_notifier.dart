@@ -31,8 +31,10 @@ extension ValueListenableCoralExtension<T> on ValueListenable<T> {
   /// // The coral now reactively mirrors the notifier's value.
   /// counterNotifier.value = 1;
   /// ```
-  Coral<T> toCoral({bool distinct = true, bool Function(T previous, T next)? equals}) =>
-      _ValueListenableCoralPipe<T>(this, distinct: distinct, equals: equals).coral;
+  Coral<T> toCoral(
+          {bool distinct = true, bool Function(T previous, T next)? equals}) =>
+      _ValueListenableCoralPipe<T>(this, distinct: distinct, equals: equals)
+          .coral;
 }
 
 final class _ValueListenableCoralPipe<T> {

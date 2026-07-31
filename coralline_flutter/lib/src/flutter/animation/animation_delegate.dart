@@ -43,9 +43,11 @@ abstract interface class _AnimationControlDelegate {
 
   TickerFuture toggle({double? from});
 
-  TickerFuture animateTo(double target, {Duration? duration, Curve curve = Curves.linear});
+  TickerFuture animateTo(double target,
+      {Duration? duration, Curve curve = Curves.linear});
 
-  TickerFuture animateBack(double target, {Duration? duration, Curve curve = Curves.linear});
+  TickerFuture animateBack(double target,
+      {Duration? duration, Curve curve = Curves.linear});
 
   TickerFuture repeat({
     double? min,
@@ -166,11 +168,13 @@ class _DormantAnimationControlDelegate implements _AnimationControlDelegate {
   TickerFuture toggle({double? from}) => _throwDormantError('toggle');
 
   @override
-  TickerFuture animateTo(double target, {Duration? duration, Curve curve = Curves.linear}) =>
+  TickerFuture animateTo(double target,
+          {Duration? duration, Curve curve = Curves.linear}) =>
       _throwDormantError('animateTo');
 
   @override
-  TickerFuture animateBack(double target, {Duration? duration, Curve curve = Curves.linear}) =>
+  TickerFuture animateBack(double target,
+          {Duration? duration, Curve curve = Curves.linear}) =>
       _throwDormantError('animateBack');
 
   @override
@@ -192,10 +196,12 @@ class _DormantAnimationControlDelegate implements _AnimationControlDelegate {
       _throwDormantError('fling');
 
   @override
-  TickerFuture animateWith(Simulation simulation) => _throwDormantError('animateWith');
+  TickerFuture animateWith(Simulation simulation) =>
+      _throwDormantError('animateWith');
 
   @override
-  TickerFuture animateBackWith(Simulation simulation) => _throwDormantError('animateBackWith');
+  TickerFuture animateBackWith(Simulation simulation) =>
+      _throwDormantError('animateBackWith');
 
   @override
   void stop({bool canceled = true}) {}
@@ -266,11 +272,13 @@ class _ActiveAnimationControlDelegate implements _AnimationControlDelegate {
   TickerFuture toggle({double? from}) => _engine.toggle(from: from);
 
   @override
-  TickerFuture animateTo(double target, {Duration? duration, Curve curve = Curves.linear}) =>
+  TickerFuture animateTo(double target,
+          {Duration? duration, Curve curve = Curves.linear}) =>
       _engine.animateTo(target, duration: duration, curve: curve);
 
   @override
-  TickerFuture animateBack(double target, {Duration? duration, Curve curve = Curves.linear}) =>
+  TickerFuture animateBack(double target,
+          {Duration? duration, Curve curve = Curves.linear}) =>
       _engine.animateBack(target, duration: duration, curve: curve);
 
   @override
@@ -281,7 +289,8 @@ class _ActiveAnimationControlDelegate implements _AnimationControlDelegate {
     Duration? period,
     int? count,
   }) =>
-      _engine.repeat(min: min, max: max, reverse: reverse, period: period, count: count);
+      _engine.repeat(
+          min: min, max: max, reverse: reverse, period: period, count: count);
 
   @override
   TickerFuture fling({
@@ -295,10 +304,12 @@ class _ActiveAnimationControlDelegate implements _AnimationControlDelegate {
           animationBehavior: animationBehavior);
 
   @override
-  TickerFuture animateWith(Simulation simulation) => _engine.animateWith(simulation);
+  TickerFuture animateWith(Simulation simulation) =>
+      _engine.animateWith(simulation);
 
   @override
-  TickerFuture animateBackWith(Simulation simulation) => _engine.animateBackWith(simulation);
+  TickerFuture animateBackWith(Simulation simulation) =>
+      _engine.animateBackWith(simulation);
 
   @override
   void stop({bool canceled = true}) => _engine.stop(canceled: canceled);

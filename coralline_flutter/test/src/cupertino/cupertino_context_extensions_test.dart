@@ -45,7 +45,8 @@ base class TestCupertinoContextComputation extends ComplexComputation<Widget>
 
 void main() {
   group('CoralBuildContextCupertinoExtension Tests', () {
-    testWidgets('observes CupertinoTheme property updates reactively', (WidgetTester tester) async {
+    testWidgets('observes CupertinoTheme property updates reactively',
+        (WidgetTester tester) async {
       final computation = TestCupertinoContextComputation();
 
       await tester.pumpWidget(
@@ -103,19 +104,24 @@ void main() {
         );
       }
 
-      await tester.pumpWidget(buildWidget(CupertinoUserInterfaceLevelData.base));
+      await tester
+          .pumpWidget(buildWidget(CupertinoUserInterfaceLevelData.base));
       await tester.pump();
 
-      expect(computation.levelCoral.data, equals(CupertinoUserInterfaceLevelData.base));
-      expect(computation.primaryContrastingCoral.data, equals(const Color(0xFF000000)));
+      expect(computation.levelCoral.data,
+          equals(CupertinoUserInterfaceLevelData.base));
+      expect(computation.primaryContrastingCoral.data,
+          equals(const Color(0xFF000000)));
       expect(computation.scaffoldBgCoral.data, equals(const Color(0xFFEEEEEE)));
       expect(computation.barBgCoral.data, equals(const Color(0xFFCCCCCC)));
       expect(computation.textThemeCoral.data, isNotNull);
 
-      await tester.pumpWidget(buildWidget(CupertinoUserInterfaceLevelData.elevated));
+      await tester
+          .pumpWidget(buildWidget(CupertinoUserInterfaceLevelData.elevated));
       await tester.pump();
 
-      expect(computation.levelCoral.data, equals(CupertinoUserInterfaceLevelData.elevated));
+      expect(computation.levelCoral.data,
+          equals(CupertinoUserInterfaceLevelData.elevated));
     });
   });
 }
@@ -123,7 +129,8 @@ void main() {
 base class _TestUserInterfaceLevelComputation extends ComplexComputation<Widget>
     with CorallineTerminalIntentAware, CorallineBuildContextAware {
   late final levelCoral = context.cupertino.userInterfaceLevel;
-  late final primaryContrastingCoral = context.cupertino.theme.primaryContrastingColor;
+  late final primaryContrastingCoral =
+      context.cupertino.theme.primaryContrastingColor;
   late final scaffoldBgCoral = context.cupertino.scaffoldBackgroundColor;
   late final barBgCoral = context.cupertino.barBackgroundColor;
   late final textThemeCoral = context.cupertino.textTheme;

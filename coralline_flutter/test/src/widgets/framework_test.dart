@@ -42,7 +42,8 @@ base class _TestExtendedContextComputation extends ComplexComputation<Widget>
   late final mediaQueryViewPaddingCoral = context.mediaQuery.viewPadding;
   late final localeCoral = context.localization.locale;
   late final formCoral = context.scope.form;
-  late final primaryScrollControllerCoral = context.scope.primaryScrollController;
+  late final primaryScrollControllerCoral =
+      context.scope.primaryScrollController;
 
   @override
   @manifestSync
@@ -63,7 +64,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('CoralWidget & CoralWidgetElement Framework Tests', () {
-    testWidgets('Basic CoralWidget renders UI from Coral stream', (tester) async {
+    testWidgets('Basic CoralWidget renders UI from Coral stream',
+        (tester) async {
       final controller = CoralController<Widget>(const Text('Initial'));
 
       await tester.pumpWidget(
@@ -94,7 +96,8 @@ void main() {
       expect(find.byType(MaterialApp), findsOneWidget);
     });
 
-    testWidgets('CoralWidget renders errorBuilder fallback on pipeline damage', (tester) async {
+    testWidgets('CoralWidget renders errorBuilder fallback on pipeline damage',
+        (tester) async {
       final damageComputation = _TestDamageComputation();
 
       await tester.pumpWidget(
@@ -110,10 +113,13 @@ void main() {
       final dynamic exception = tester.takeException();
       expect(exception, isNotNull);
 
-      expect(find.textContaining('Error: Exception: Computation damage test'), findsOneWidget);
+      expect(find.textContaining('Error: Exception: Computation damage test'),
+          findsOneWidget);
     });
 
-    testWidgets('CoralWidget update (hotswap) updates underlying coral pipeline', (tester) async {
+    testWidgets(
+        'CoralWidget update (hotswap) updates underlying coral pipeline',
+        (tester) async {
       final controller1 = CoralController<Widget>(const Text('Pipeline 1'));
       final controller2 = CoralController<Widget>(const Text('Pipeline 2'));
 
@@ -143,7 +149,9 @@ void main() {
       expect(find.text('Pipeline 2'), findsOneWidget);
     });
 
-    testWidgets('CoralWidget unmount cleanly deactivates terminal and decouples', (tester) async {
+    testWidgets(
+        'CoralWidget unmount cleanly deactivates terminal and decouples',
+        (tester) async {
       final controller = CoralController<Widget>(const Text('Unmount Test'));
 
       await tester.pumpWidget(
@@ -168,7 +176,8 @@ void main() {
   });
 
   group('CoralComputationWidgetExtension & ProviderExtension Tests', () {
-    testWidgets('ComputationExtension toWidget converts CoralComputation to CoralWidget',
+    testWidgets(
+        'ComputationExtension toWidget converts CoralComputation to CoralWidget',
         (tester) async {
       final computation = _TestWidgetComputation('Computation Text');
 
@@ -182,7 +191,9 @@ void main() {
       expect(find.text('Computation Text'), findsOneWidget);
     });
 
-    testWidgets('ProviderExtension toWidget converts CoralProvider to CoralWidget', (tester) async {
+    testWidgets(
+        'ProviderExtension toWidget converts CoralProvider to CoralWidget',
+        (tester) async {
       final controller = CoralController<Widget>(const Text('Provider Text'));
 
       await tester.pumpWidget(
@@ -197,9 +208,11 @@ void main() {
   });
 
   group('CorallineBuildContextAware & Intent Handling Tests', () {
-    test('didUpdateIntent couples and decouples context based on intent type', () {
+    test('didUpdateIntent couples and decouples context based on intent type',
+        () {
       final computation = _TestContextAwareComputation();
-      final widgetIntent = CoralWidgetTerminalIntent(context: const _InstantContext());
+      final widgetIntent =
+          CoralWidgetTerminalIntent(context: const _InstantContext());
 
       computation.didUpdateIntent(newIntent: widgetIntent);
       computation.didUpdateIntent(newIntent: _NonWidgetIntent());
@@ -232,15 +245,20 @@ void main() {
       );
       await tester.pump();
 
-      expect(computation.mediaQueryViewPaddingCoral.data, const EdgeInsets.all(20));
+      expect(computation.mediaQueryViewPaddingCoral.data,
+          const EdgeInsets.all(20));
       expect(computation.localeCoral.data, const Locale('en', 'US'));
       expect(computation.formCoral.data, isNotNull);
       expect(computation.primaryScrollControllerCoral.data, isNotNull);
     });
   });
 
-  group('InheritedCoralProviderWidget & InheritedCoralProvider Exhaustive Tests', () {
-    testWidgets('toInheritedWidget extension creates InheritedCoralProviderWidget', (tester) async {
+  group(
+      'InheritedCoralProviderWidget & InheritedCoralProvider Exhaustive Tests',
+      () {
+    testWidgets(
+        'toInheritedWidget extension creates InheritedCoralProviderWidget',
+        (tester) async {
       final controller = CoralController<String>('hello');
       final provider = controller.provider;
       final widget = provider.toInheritedWidget(child: const Text('Child'));
@@ -254,7 +272,9 @@ void main() {
       expect(find.text('Child'), findsOneWidget);
     });
 
-    test('InheritedCoralProviderWidget updateShouldNotify compares provider references', () {
+    test(
+        'InheritedCoralProviderWidget updateShouldNotify compares provider references',
+        () {
       final controller1 = CoralController<String>('v1');
       final controller2 = CoralController<String>('v2');
       final provider1 = controller1.provider;
@@ -277,7 +297,8 @@ void main() {
       expect(widget1.updateShouldNotify(widget2), true);
     });
 
-    testWidgets('coralOf retrieves CoralProvider state from ancestor widget', (tester) async {
+    testWidgets('coralOf retrieves CoralProvider state from ancestor widget',
+        (tester) async {
       final controller = CoralController<int>(42);
       final provider = controller.provider;
       final comp = _TestCoralOfComputation();
@@ -294,7 +315,8 @@ void main() {
       expect(comp.valueCoral.data, 42);
     });
 
-    testWidgets('maybeCoralOf retrieves optional CoralProvider state from ancestor widget',
+    testWidgets(
+        'maybeCoralOf retrieves optional CoralProvider state from ancestor widget',
         (tester) async {
       final controller = CoralController<int>(42);
       final provider = controller.provider;
@@ -321,7 +343,8 @@ void main() {
       final provider1 = controller1.provider;
       final provider2 = controller2.provider;
 
-      final providerController = CoralController<CoralProvider<String>>(provider1);
+      final providerController =
+          CoralController<CoralProvider<String>>(provider1);
       final comp = _TestStringCoralOfComputation();
 
       final inheritedProviderComp = InheritedCoralProvider<String>(

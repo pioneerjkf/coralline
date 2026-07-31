@@ -7,7 +7,8 @@ part of '../../../cupertino.dart';
 /// Opens a dedicated namespace on [Coral<BuildContext>] for Cupertino components.
 extension CoralBuildContextCupertinoExtension on Coral<BuildContext> {
   /// Opens a dedicated namespace for Cupertino design tokens and controllers reactively.
-  CoralBuildContextCupertinoProxy get cupertino => CoralBuildContextCupertinoProxy._(this);
+  CoralBuildContextCupertinoProxy get cupertino =>
+      CoralBuildContextCupertinoProxy._(this);
 }
 
 /// **Core Concept (Cupertino Proxy):**
@@ -17,7 +18,8 @@ extension type CoralBuildContextCupertinoProxy._(Coral<BuildContext> _coral) {
   Coral<BuildContext> get context => _coral;
 
   /// Opens the [CoralBuildContextCupertinoThemeProxy] namespace for Cupertino theme tokens.
-  CoralBuildContextCupertinoThemeProxy get theme => CoralBuildContextCupertinoThemeProxy._(_coral);
+  CoralBuildContextCupertinoThemeProxy get theme =>
+      CoralBuildContextCupertinoThemeProxy._(_coral);
 
   /// Reactively observes the current [CupertinoThemeData] shortcut.
   Coral<CupertinoThemeData> get themeData => theme.data;

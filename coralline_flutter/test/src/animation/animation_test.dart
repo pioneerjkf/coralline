@@ -15,7 +15,8 @@ void main() {
     // 1. Constructors & Property Defaults
     // =========================================================================
     group('1. Constructors & Constraints', () {
-      testWidgets('default bounded constructor initializes correctly', (WidgetTester tester) async {
+      testWidgets('default bounded constructor initializes correctly',
+          (WidgetTester tester) async {
         late ResilientAnimationController controller;
 
         await tester.pumpWidget(
@@ -44,7 +45,8 @@ void main() {
         controller.dispose();
       });
 
-      testWidgets('asserts if upperBound < lowerBound', (WidgetTester tester) async {
+      testWidgets('asserts if upperBound < lowerBound',
+          (WidgetTester tester) async {
         await tester.pumpWidget(
           MaterialApp(
             home: TestWidget(
@@ -63,7 +65,8 @@ void main() {
         );
       });
 
-      testWidgets('unbounded constructor initializes infinite bounds', (WidgetTester tester) async {
+      testWidgets('unbounded constructor initializes infinite bounds',
+          (WidgetTester tester) async {
         late ResilientAnimationController controller;
 
         await tester.pumpWidget(
@@ -84,7 +87,8 @@ void main() {
         expect(controller.upperBound, equals(double.infinity));
         expect(controller.value, equals(42.0));
         expect(controller.duration, equals(const Duration(milliseconds: 200)));
-        expect(controller.animationBehavior, equals(AnimationBehavior.preserve));
+        expect(
+            controller.animationBehavior, equals(AnimationBehavior.preserve));
 
         controller.dispose();
       });
@@ -94,7 +98,8 @@ void main() {
     // 2. Dormant State Member Behavior (Getters, Setters, & Methods)
     // =========================================================================
     group('2. Dormant State All Members', () {
-      testWidgets('reads and writes dormant properties safely and notifies listeners',
+      testWidgets(
+          'reads and writes dormant properties safely and notifies listeners',
           (WidgetTester tester) async {
         late ResilientAnimationController controller;
         int notifyCount = 0;
@@ -125,7 +130,8 @@ void main() {
         expect(controller.view, isNull);
         expect(controller.value, equals(0.2));
         expect(controller.duration, equals(const Duration(milliseconds: 300)));
-        expect(controller.reverseDuration, equals(const Duration(milliseconds: 150)));
+        expect(controller.reverseDuration,
+            equals(const Duration(milliseconds: 150)));
         expect(controller.velocity, equals(0.0));
         expect(controller.lastElapsedDuration, isNull);
         expect(controller.isAnimating, isFalse);
@@ -146,7 +152,8 @@ void main() {
 
         // ReverseDuration setter in dormant state
         controller.reverseDuration = const Duration(milliseconds: 400);
-        expect(controller.reverseDuration, equals(const Duration(milliseconds: 400)));
+        expect(controller.reverseDuration,
+            equals(const Duration(milliseconds: 400)));
         expect(notifyCount, equals(3));
 
         // Reset in dormant state
@@ -155,7 +162,8 @@ void main() {
         expect(notifyCount, equals(4));
 
         // Resync and stop in dormant state (safe no-ops)
-        controller.resync(tester.state(find.byType(TestWidget)) as TickerProvider);
+        controller
+            .resync(tester.state(find.byType(TestWidget)) as TickerProvider);
         controller.stop();
         expect(controller.isAnimating, isFalse);
 
@@ -165,7 +173,8 @@ void main() {
         controller.dispose();
       });
 
-      testWidgets('status computation in dormant state for bounds', (WidgetTester tester) async {
+      testWidgets('status computation in dormant state for bounds',
+          (WidgetTester tester) async {
         late ResilientAnimationController controller;
 
         await tester.pumpWidget(
@@ -228,7 +237,8 @@ void main() {
           throwsStateError,
         );
         expect(
-          () => controller.animateBackWith(GravitySimulation(9.8, 1.0, 0.0, 0.0)),
+          () =>
+              controller.animateBackWith(GravitySimulation(9.8, 1.0, 0.0, 0.0)),
           throwsStateError,
         );
 
@@ -296,7 +306,8 @@ void main() {
         controller.dispose();
       });
 
-      testWidgets('toggle switches direction correctly', (WidgetTester tester) async {
+      testWidgets('toggle switches direction correctly',
+          (WidgetTester tester) async {
         late ResilientAnimationController controller;
         late CoralTerminal<double> terminal;
 
@@ -363,7 +374,8 @@ void main() {
         controller.dispose();
       });
 
-      testWidgets('repeat drives cyclic animation', (WidgetTester tester) async {
+      testWidgets('repeat drives cyclic animation',
+          (WidgetTester tester) async {
         late ResilientAnimationController controller;
         late CoralTerminal<double> terminal;
 
@@ -395,7 +407,8 @@ void main() {
         controller.dispose();
       });
 
-      testWidgets('fling drives physics simulation', (WidgetTester tester) async {
+      testWidgets('fling drives physics simulation',
+          (WidgetTester tester) async {
         late ResilientAnimationController controller;
         late CoralTerminal<double> terminal;
 
@@ -463,7 +476,8 @@ void main() {
     // 4. State Continuity across Dormant ↔ Active Transitions
     // =========================================================================
     group('4. State Continuity & Lifecycle Transitions', () {
-      testWidgets('preserves parameters staged in dormant state upon activation',
+      testWidgets(
+          'preserves parameters staged in dormant state upon activation',
           (WidgetTester tester) async {
         late ResilientAnimationController controller;
         late CoralTerminal<double> terminal;
@@ -492,7 +506,8 @@ void main() {
         // Verify active engine inherited staged parameters
         expect(controller.value, equals(0.4));
         expect(controller.duration, equals(const Duration(milliseconds: 400)));
-        expect(controller.reverseDuration, equals(const Duration(milliseconds: 250)));
+        expect(controller.reverseDuration,
+            equals(const Duration(milliseconds: 250)));
 
         // Deactivate and check fallback persistence
         terminal.deactivate();
@@ -549,7 +564,8 @@ void main() {
     // 6. Utility & Mixin Methods (drive, toStringDetails)
     // =========================================================================
     group('6. Transformations & Debugging', () {
-      testWidgets('drive method creates transformed Animation', (WidgetTester tester) async {
+      testWidgets('drive method creates transformed Animation',
+          (WidgetTester tester) async {
         late ResilientAnimationController controller;
 
         await tester.pumpWidget(
@@ -612,7 +628,8 @@ class TestWidget extends StatefulWidget {
   State<TestWidget> createState() => _TestWidgetState();
 }
 
-class _TestWidgetState extends State<TestWidget> with SingleTickerProviderStateMixin {
+class _TestWidgetState extends State<TestWidget>
+    with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();

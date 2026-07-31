@@ -23,7 +23,8 @@ extension CoralBuildContextIconThemeExtension on Coral<BuildContext> {
 /// Reactive getters on [Coral<BuildContext>] for fine-grained [MediaQuery] environment properties.
 extension CoralBuildContextMediaQueryExtension on Coral<BuildContext> {
   /// Opens a dedicated namespace for operating on [MediaQueryData] reactively.
-  CoralBuildContextMediaQueryProxy get mediaQuery => CoralBuildContextMediaQueryProxy._(this);
+  CoralBuildContextMediaQueryProxy get mediaQuery =>
+      CoralBuildContextMediaQueryProxy._(this);
 }
 
 /// Reactive getters on [Coral<BuildContext>] for default text styling.
@@ -35,7 +36,8 @@ extension CoralBuildContextTextExtension on Coral<BuildContext> {
 /// Reactive getters on [Coral<BuildContext>] for localizations and text/layout directionality.
 extension CoralBuildContextLocalizationExtension on Coral<BuildContext> {
   /// Opens a dedicated namespace for localizations and directionality properties reactively.
-  CoralBuildContextLocalizationProxy get localization => CoralBuildContextLocalizationProxy._(this);
+  CoralBuildContextLocalizationProxy get localization =>
+      CoralBuildContextLocalizationProxy._(this);
 }
 
 /// Reactive getters on [Coral<BuildContext>] for focus, form, navigation, and UI scope controllers.
@@ -55,22 +57,27 @@ extension type CoralBuildContextMediaQueryProxy._(Coral<BuildContext> _coral) {
   Coral<BuildContext> get context => _coral;
 
   /// Reactively observes the complete [MediaQueryData].
-  Coral<MediaQueryData> get data => _coral.map((e) => MediaQuery.of(e)).distinct();
+  Coral<MediaQueryData> get data =>
+      _coral.map((e) => MediaQuery.of(e)).distinct();
 
   /// Reactively observes screen or layout container size changes only.
   Coral<Size> get size => _coral.map((e) => MediaQuery.sizeOf(e)).distinct();
 
   /// Reactively observes safe area padding changes only.
-  Coral<EdgeInsets> get padding => _coral.map((e) => MediaQuery.paddingOf(e)).distinct();
+  Coral<EdgeInsets> get padding =>
+      _coral.map((e) => MediaQuery.paddingOf(e)).distinct();
 
   /// Reactively observes view insets changes only (e.g., software keyboard visibility).
-  Coral<EdgeInsets> get viewInsets => _coral.map((e) => MediaQuery.viewInsetsOf(e)).distinct();
+  Coral<EdgeInsets> get viewInsets =>
+      _coral.map((e) => MediaQuery.viewInsetsOf(e)).distinct();
 
   /// Reactively observes view padding changes only.
-  Coral<EdgeInsets> get viewPadding => _coral.map((e) => MediaQuery.viewPaddingOf(e)).distinct();
+  Coral<EdgeInsets> get viewPadding =>
+      _coral.map((e) => MediaQuery.viewPaddingOf(e)).distinct();
 
   /// Reactively observes screen orientation changes only.
-  Coral<Orientation> get orientation => _coral.map((e) => MediaQuery.orientationOf(e)).distinct();
+  Coral<Orientation> get orientation =>
+      _coral.map((e) => MediaQuery.orientationOf(e)).distinct();
 
   /// Reactively observes platform brightness changes only (light/dark mode).
   Coral<Brightness> get platformBrightness =>
@@ -88,20 +95,24 @@ extension type CoralBuildContextTextProxy._(Coral<BuildContext> _coral) {
   Coral<BuildContext> get context => _coral;
 
   /// Reactively observes the default [DefaultTextStyle].
-  Coral<DefaultTextStyle> get defaultStyle => _coral.map((e) => DefaultTextStyle.of(e)).distinct();
+  Coral<DefaultTextStyle> get defaultStyle =>
+      _coral.map((e) => DefaultTextStyle.of(e)).distinct();
 }
 
 /// **Core Concept (Localization Proxy):**
 /// A dedicated proxy wrapper for [Coral<BuildContext>] to access locale and directionality properties reactively.
-extension type CoralBuildContextLocalizationProxy._(Coral<BuildContext> _coral) {
+extension type CoralBuildContextLocalizationProxy._(
+    Coral<BuildContext> _coral) {
   /// Exposes the underlying [Coral<BuildContext>] node.
   Coral<BuildContext> get context => _coral;
 
   /// Reactively observes the active [Locale].
-  Coral<Locale> get locale => _coral.map((e) => Localizations.localeOf(e)).distinct();
+  Coral<Locale> get locale =>
+      _coral.map((e) => Localizations.localeOf(e)).distinct();
 
   /// Reactively observes the current [TextDirection] (LTR / RTL).
-  Coral<TextDirection> get direction => _coral.map((e) => Directionality.of(e)).distinct();
+  Coral<TextDirection> get direction =>
+      _coral.map((e) => Directionality.of(e)).distinct();
 }
 
 /// **Core Concept (Scope Proxy):**
@@ -115,7 +126,8 @@ extension type CoralBuildContextScopeProxy._(Coral<BuildContext> _coral) {
   Coral<BuildContext> get context => _coral;
 
   /// Reactively observes the current [FocusScopeNode].
-  Coral<FocusScopeNode> get focus => _coral.map((e) => FocusScope.of(e)).distinct();
+  Coral<FocusScopeNode> get focus =>
+      _coral.map((e) => FocusScope.of(e)).distinct();
 
   /// Reactively observes the nearest ancestor [FormState] if present.
   Coral<FormState?> get form => _coral.map((e) => Form.maybeOf(e)).distinct();
@@ -125,11 +137,14 @@ extension type CoralBuildContextScopeProxy._(Coral<BuildContext> _coral) {
       _coral.map((e) => PrimaryScrollController.maybeOf(e)).distinct();
 
   /// Reactively observes the nearest ancestor [NavigatorState] if present.
-  Coral<NavigatorState?> get navigator => _coral.map((e) => Navigator.maybeOf(e)).distinct();
+  Coral<NavigatorState?> get navigator =>
+      _coral.map((e) => Navigator.maybeOf(e)).distinct();
 
   /// Reactively observes the nearest ancestor [OverlayState] if present.
-  Coral<OverlayState?> get overlay => _coral.map((e) => Overlay.maybeOf(e)).distinct();
+  Coral<OverlayState?> get overlay =>
+      _coral.map((e) => Overlay.maybeOf(e)).distinct();
 
   /// Reactively observes the nearest ancestor [ScrollableState] if present.
-  Coral<ScrollableState?> get scrollable => _coral.map((e) => Scrollable.maybeOf(e)).distinct();
+  Coral<ScrollableState?> get scrollable =>
+      _coral.map((e) => Scrollable.maybeOf(e)).distinct();
 }

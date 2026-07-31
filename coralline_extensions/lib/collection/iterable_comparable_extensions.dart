@@ -31,7 +31,8 @@ extension ComparableCoralElementsExtension<E extends Comparable<dynamic>>
       });
 
   /// Returns true if this collection is sorted in ascending order.
-  Coral<bool> isSorted([int Function(E a, E b)? compare]) => coral.map((source) {
+  Coral<bool> isSorted([int Function(E a, E b)? compare]) =>
+      coral.map((source) {
         if (source.length < 2) return true;
         final comp = compare ?? (a, b) => a.compareTo(b);
         var iterator = source.iterator;
@@ -51,6 +52,7 @@ extension ComparableCoralElementsExtension<E extends Comparable<dynamic>>
 
   /// Returns a new list containing the elements of this collection sorted in descending order.
   Coral<List<E>> get sortedDescending => coral.map((source) {
-        return List<E>.unmodifiable(source.toList()..sort((a, b) => b.compareTo(a)));
+        return List<E>.unmodifiable(
+            source.toList()..sort((a, b) => b.compareTo(a)));
       });
 }

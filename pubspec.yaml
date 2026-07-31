@@ -1,0 +1,9 @@
+name: coralline_workspace
+environment:
+  sdk: ^3.6.0
+
+workspace:
+  - coralline
+  - coralline_extensions
+  - coralline_flutter
+  - coralline_flutter/example

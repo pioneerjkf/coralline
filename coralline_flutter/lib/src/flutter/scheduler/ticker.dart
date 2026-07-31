@@ -65,7 +65,8 @@ base mixin TickerProviderCorallineLifecycleAwareMixin
 
   @mustCallSuper
   @override
-  void didUpdateBuildContext(BuildContext? oldContext, BuildContext? newContext) {
+  void didUpdateBuildContext(
+      BuildContext? oldContext, BuildContext? newContext) {
     super.didUpdateBuildContext(oldContext, newContext);
     _updateTickerModeNotifier(newContext);
   }
@@ -185,7 +186,9 @@ base mixin TickerProviderCorallineLifecycleAwareMixin
 
   void _updateTickerModeNotifier(BuildContext? context) {
     final ValueListenable<TickerModeData>? newNotifier =
-        context != null && context.mounted ? TickerMode.getValuesNotifier(context) : null;
+        context != null && context.mounted
+            ? TickerMode.getValuesNotifier(context)
+            : null;
     if (newNotifier == _tickerModeNotifier) {
       return;
     }
@@ -238,7 +241,8 @@ base mixin SingleTickerProviderCorallineLifecycleAwareMixin
 
   @mustCallSuper
   @override
-  void didUpdateBuildContext(BuildContext? oldContext, BuildContext? newContext) {
+  void didUpdateBuildContext(
+      BuildContext? oldContext, BuildContext? newContext) {
     super.didUpdateBuildContext(oldContext, newContext);
     _updateTickerModeNotifier(newContext);
   }
@@ -359,7 +363,9 @@ base mixin SingleTickerProviderCorallineLifecycleAwareMixin
 
   void _updateTickerModeNotifier(BuildContext? context) {
     final ValueListenable<TickerModeData>? newNotifier =
-        context != null && context.mounted ? TickerMode.getValuesNotifier(context) : null;
+        context != null && context.mounted
+            ? TickerMode.getValuesNotifier(context)
+            : null;
     if (newNotifier == _tickerModeNotifier) {
       return;
     }

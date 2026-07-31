@@ -235,8 +235,10 @@ base class ResilientAnimationController extends Animation<double>
 
   /// The internal [CoralProvider<double>] strategy (single-subscriber or broadcast).
   late final CoralProvider<double> _provider = (broadcast
-      ? CoralBroadcaster(_resource.cascade((controller) => controller.toCoral()))
-      : CoralProvider.coral(_resource.cascade((controller) => controller.toCoral())));
+      ? CoralBroadcaster(
+          _resource.cascade((controller) => controller.toCoral()))
+      : CoralProvider.coral(
+          _resource.cascade((controller) => controller.toCoral())));
 
   /// The [Coral<double>] instance exposing the animated double value lifecycle.
   ///
@@ -454,7 +456,8 @@ base class ResilientAnimationController extends Animation<double>
   /// controller.animateTo(0.8, duration: const Duration(milliseconds: 200));
   /// ```
   @awaitNotRequired
-  TickerFuture animateTo(double target, {Duration? duration, Curve curve = Curves.linear}) =>
+  TickerFuture animateTo(double target,
+          {Duration? duration, Curve curve = Curves.linear}) =>
       _delegate.animateTo(target, duration: duration, curve: curve);
 
   /// Drives the animation from its current value to the given target, "backward".
@@ -477,7 +480,8 @@ base class ResilientAnimationController extends Animation<double>
   /// controller.animateBack(0.2);
   /// ```
   @awaitNotRequired
-  TickerFuture animateBack(double target, {Duration? duration, Curve curve = Curves.linear}) =>
+  TickerFuture animateBack(double target,
+          {Duration? duration, Curve curve = Curves.linear}) =>
       _delegate.animateBack(target, duration: duration, curve: curve);
 
   /// Starts running this animation in the forward direction, and restarts when complete.
@@ -510,7 +514,8 @@ base class ResilientAnimationController extends Animation<double>
     Duration? period,
     int? count,
   }) =>
-      _delegate.repeat(min: min, max: max, reverse: reverse, period: period, count: count);
+      _delegate.repeat(
+          min: min, max: max, reverse: reverse, period: period, count: count);
 
   /// Drives the animation with a spring and initial velocity.
   ///
@@ -560,7 +565,8 @@ base class ResilientAnimationController extends Animation<double>
   /// controller.animateWith(customSimulation);
   /// ```
   @awaitNotRequired
-  TickerFuture animateWith(Simulation simulation) => _delegate.animateWith(simulation);
+  TickerFuture animateWith(Simulation simulation) =>
+      _delegate.animateWith(simulation);
 
   /// Drives the animation according to the given simulation with a status of reverse.
   ///
@@ -580,7 +586,8 @@ base class ResilientAnimationController extends Animation<double>
   /// controller.animateBackWith(customSimulation);
   /// ```
   @awaitNotRequired
-  TickerFuture animateBackWith(Simulation simulation) => _delegate.animateBackWith(simulation);
+  TickerFuture animateBackWith(Simulation simulation) =>
+      _delegate.animateBackWith(simulation);
 
   /// Stops running this animation.
   ///

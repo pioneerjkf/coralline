@@ -1,7 +1,14 @@
 name: coralline_extensions
 description: "The official extension library for coralline. Seamlessly integrates Chain of Reactivity and Lazy-computation pipelines into Dart's Future, Stream, and Iterable."
 
-publish_to: none
+repository: https://github.com/pioneerjkf/coralline
+issue_tracker: https://github.com/pioneerjkf/coralline/issues
+topics:
+  - state-management
+  - reactivity
+  - extensions
+  - async
+  - stream
 
 resolution: workspace
 
@@ -20,4 +27,5 @@ dependencies:
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.24.0
+
 

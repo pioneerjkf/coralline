@@ -22,5 +22,6 @@ extension type CoralBuildContextScaffoldProxy._(Coral<BuildContext> _coral) {
   ///
   /// **Ensures:**
   /// * Emits nearest ancestor [ScaffoldState] or `null`.
-  Coral<ScaffoldState?> get state => _coral.map((e) => Scaffold.maybeOf(e)).distinct();
+  Coral<ScaffoldState?> get state =>
+      _coral.map((e) => Scaffold.maybeOf(e)).distinct();
 }

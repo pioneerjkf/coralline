@@ -5,7 +5,8 @@ import 'package:test/test.dart';
 void main() {
   group('ListCoralElementsExtension', () {
     test('binarySearch and lowerBound locate elements reactively', () {
-      final controller = CoralController<List<int>>([10, 20, 30, 40], broadcast: true);
+      final controller =
+          CoralController<List<int>>([10, 20, 30, 40], broadcast: true);
 
       final indexCoral = controller.coral.elements.binarySearch(30);
       final boundCoral = controller.coral.elements.lowerBound(25);
@@ -17,7 +18,8 @@ void main() {
       termBound.activate();
 
       expect(termIdx.snapshot.data, 2);
-      expect(termBound.snapshot.data, 2); // 25 would be inserted at index 2 (between 20 and 30)
+      expect(termBound.snapshot.data,
+          2); // 25 would be inserted at index 2 (between 20 and 30)
 
       termIdx.deactivate();
       termBound.deactivate();
@@ -26,7 +28,8 @@ void main() {
     test(
         'sortedRange, sortedBy, sortedByCompare, shuffledRange, reversedRange, swapped return new lists reactively',
         () {
-      final controller = CoralController<List<int>>([5, 3, 9, 1, 7], broadcast: true);
+      final controller =
+          CoralController<List<int>>([5, 3, 9, 1, 7], broadcast: true);
 
       final sortedRangeCoral =
           controller.coral.elements.sortedRange(1, 4, (a, b) => a.compareTo(b));
@@ -59,7 +62,9 @@ void main() {
       t5.deactivate();
     });
 
-    test('equals, slice, elementAtOrNull, slices reactively compute list properties', () {
+    test(
+        'equals, slice, elementAtOrNull, slices reactively compute list properties',
+        () {
       final controller = CoralController<List<int>>([1, 2, 3], broadcast: true);
 
       final eqCoral = controller.coral.elements.equals([1, 2, 3]);

@@ -7,7 +7,8 @@ part of '../../../material.dart';
 /// Opens a dedicated namespace on [Coral<BuildContext>] for Material Design components.
 extension CoralBuildContextMaterialExtension on Coral<BuildContext> {
   /// Opens a dedicated namespace for Material design tokens and scope controllers reactively.
-  CoralBuildContextMaterialProxy get material => CoralBuildContextMaterialProxy._(this);
+  CoralBuildContextMaterialProxy get material =>
+      CoralBuildContextMaterialProxy._(this);
 }
 
 /// **Core Concept (Material Proxy):**
@@ -17,10 +18,12 @@ extension type CoralBuildContextMaterialProxy._(Coral<BuildContext> _coral) {
   Coral<BuildContext> get context => _coral;
 
   /// Opens the [CoralBuildContextThemeProxy] namespace for Material theme tokens.
-  CoralBuildContextThemeProxy get theme => CoralBuildContextThemeProxy._(_coral);
+  CoralBuildContextThemeProxy get theme =>
+      CoralBuildContextThemeProxy._(_coral);
 
   /// Opens the [CoralBuildContextScaffoldProxy] namespace for Scaffold scopes.
-  CoralBuildContextScaffoldProxy get scaffold => CoralBuildContextScaffoldProxy._(_coral);
+  CoralBuildContextScaffoldProxy get scaffold =>
+      CoralBuildContextScaffoldProxy._(_coral);
 
   /// Reactively observes the current [ColorScheme] shortcut.
   Coral<ColorScheme> get colorScheme => theme.colorScheme;

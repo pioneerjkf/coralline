@@ -27,23 +27,30 @@ extension GeneralCoralElementsExtension<E> on CoralIterableElements<E> {
       coral.map((source) => List.unmodifiable(source.shuffled(random)));
 
   /// Returns a list containing the elements of this collection sorted by [keyOf] reactively.
-  Coral<List<E>> sortedBy<K extends Comparable<dynamic>>(K Function(E element) keyOf) => coral.map(
-      (source) => List.unmodifiable(source.sortedByCompare<K>(keyOf, (a, b) => a.compareTo(b))));
+  Coral<List<E>> sortedBy<K extends Comparable<dynamic>>(
+          K Function(E element) keyOf) =>
+      coral.map((source) => List.unmodifiable(
+          source.sortedByCompare<K>(keyOf, (a, b) => a.compareTo(b))));
 
   /// Returns a list containing the elements of this collection sorted by [compare] of [keyOf] reactively.
-  Coral<List<E>> sortedByCompare<K>(K Function(E element) keyOf, int Function(K a, K b) compare) =>
-      coral.map((source) => List.unmodifiable(source.sortedByCompare<K>(keyOf, compare)));
+  Coral<List<E>> sortedByCompare<K>(
+          K Function(E element) keyOf, int Function(K a, K b) compare) =>
+      coral.map((source) =>
+          List.unmodifiable(source.sortedByCompare<K>(keyOf, compare)));
 
   /// Returns true if this collection is sorted by [compare] reactively.
   Coral<bool> isSorted(int Function(E a, E b) compare) =>
       coral.map((source) => source.isSorted(compare));
 
   /// Returns true if this collection is sorted by the natural order of [keyOf] reactively.
-  Coral<bool> isSortedBy<K extends Comparable<dynamic>>(K Function(E element) keyOf) =>
-      coral.map((source) => source.isSortedByCompare<K>(keyOf, (a, b) => a.compareTo(b)));
+  Coral<bool> isSortedBy<K extends Comparable<dynamic>>(
+          K Function(E element) keyOf) =>
+      coral.map((source) =>
+          source.isSortedByCompare<K>(keyOf, (a, b) => a.compareTo(b)));
 
   /// Returns true if this collection is sorted by [compare] of [keyOf] reactively.
-  Coral<bool> isSortedByCompare<K>(K Function(E element) keyOf, int Function(K a, K b) compare) =>
+  Coral<bool> isSortedByCompare<K>(
+          K Function(E element) keyOf, int Function(K a, K b) compare) =>
       coral.map((source) => source.isSortedByCompare<K>(keyOf, compare));
 
   /// Maps each element of this collection along with its index reactively.
@@ -59,15 +66,19 @@ extension GeneralCoralElementsExtension<E> on CoralIterableElements<E> {
       coral.map((source) => List.unmodifiable(source.whereNotIndexed(test)));
 
   /// Flattens this collection along with element indices reactively.
-  Coral<List<T>> expandIndexed<T>(Iterable<T> Function(int index, E element) toElements) =>
-      coral.map((source) => List.unmodifiable(source.expandIndexed(toElements)));
+  Coral<List<T>> expandIndexed<T>(
+          Iterable<T> Function(int index, E element) toElements) =>
+      coral
+          .map((source) => List.unmodifiable(source.expandIndexed(toElements)));
 
   /// Reduces this collection to a single value by iteratively combining elements along with their index reactively.
-  Coral<E> reduceIndexed(E Function(int index, E previous, E element) combine) =>
+  Coral<E> reduceIndexed(
+          E Function(int index, E previous, E element) combine) =>
       coral.map((source) => source.reduceIndexed(combine));
 
   /// Reduces this collection to a single value by iteratively combining elements along with their index and an initial value reactively.
-  Coral<T> foldIndexed<T>(T initialValue, T Function(int index, T previous, E element) combine) =>
+  Coral<T> foldIndexed<T>(T initialValue,
+          T Function(int index, T previous, E element) combine) =>
       coral.map((source) => source.foldIndexed<T>(initialValue, combine));
 
   /// Returns the first element that satisfies [test] reactively, or null if none.
@@ -91,11 +102,13 @@ extension GeneralCoralElementsExtension<E> on CoralIterableElements<E> {
       coral.map((source) => source.singleWhereOrNull(test));
 
   /// Returns the single element that satisfies an indexed predicate [test] reactively, or null if none.
-  Coral<E?> singleWhereIndexedOrNull(bool Function(int index, E element) test) =>
+  Coral<E?> singleWhereIndexedOrNull(
+          bool Function(int index, E element) test) =>
       coral.map((source) => source.singleWhereIndexedOrNull(test));
 
   /// Returns the [index]th element reactively, or null if out of range.
-  Coral<E?> elementAtOrNull(int index) => coral.map((source) => source.elementAtOrNull(index));
+  Coral<E?> elementAtOrNull(int index) =>
+      coral.map((source) => source.elementAtOrNull(index));
 
   /// Groups elements by [key] reactively, keeping only the last element for each key.
   Coral<Map<K, E>> lastBy<K>(K Function(E element) key) =>
@@ -106,7 +119,8 @@ extension GeneralCoralElementsExtension<E> on CoralIterableElements<E> {
     required K Function(E element) key,
     required G Function(G? previous, E element) fold,
   }) =>
-      coral.map((source) => Map<K, G>.unmodifiable(source.groupFoldBy<K, G>(key, fold)));
+      coral.map((source) =>
+          Map<K, G>.unmodifiable(source.groupFoldBy<K, G>(key, fold)));
 
   /// Groups elements into sets by [keyOf] reactively.
   Coral<Map<K, Set<E>>> groupSetsBy<K>(K Function(E element) keyOf) =>
@@ -119,17 +133,15 @@ extension GeneralCoralElementsExtension<E> on CoralIterableElements<E> {
   /// Groups elements into lists by [keyOf] reactively.
   Coral<Map<K, List<E>>> groupListsBy<K>(K Function(E element) keyOf) =>
       coral.map((source) => Map<K, List<E>>.unmodifiable(
-            source
-                .groupListsBy<K>(keyOf)
-                .map((k, v) => MapEntry<K, List<E>>(k, List<E>.unmodifiable(v))),
+            source.groupListsBy<K>(keyOf).map(
+                (k, v) => MapEntry<K, List<E>>(k, List<E>.unmodifiable(v))),
           ));
 
   /// Legacy alias of [groupListsBy].
   Coral<Map<K, List<E>>> groupBy<K>(K Function(E element) key) =>
       coral.map((source) => Map<K, List<E>>.unmodifiable(
-            col
-                .groupBy<E, K>(source, key)
-                .map((k, v) => MapEntry<K, List<E>>(k, List<E>.unmodifiable(v))),
+            col.groupBy<E, K>(source, key).map(
+                (k, v) => MapEntry<K, List<E>>(k, List<E>.unmodifiable(v))),
           ));
 
   /// Splits this collection into chunks before elements satisfying [test] reactively.
@@ -151,53 +163,63 @@ extension GeneralCoralElementsExtension<E> on CoralIterableElements<E> {
           ));
 
   /// Splits this collection into chunks before elements satisfying an indexed predicate [test] reactively.
-  Coral<List<List<E>>> splitBeforeIndexed(bool Function(int index, E element) test) =>
+  Coral<List<List<E>>> splitBeforeIndexed(
+          bool Function(int index, E element) test) =>
       coral.map((source) => List<List<E>>.unmodifiable(
             source.splitBeforeIndexed(test).map((s) => List<E>.unmodifiable(s)),
           ));
 
   /// Splits this collection into chunks after elements satisfying an indexed predicate [test] reactively.
-  Coral<List<List<E>>> splitAfterIndexed(bool Function(int index, E element) test) =>
+  Coral<List<List<E>>> splitAfterIndexed(
+          bool Function(int index, E element) test) =>
       coral.map((source) => List<List<E>>.unmodifiable(
             source.splitAfterIndexed(test).map((s) => List<E>.unmodifiable(s)),
           ));
 
   /// Splits this collection into chunks between elements satisfying an indexed predicate [test] reactively.
-  Coral<List<List<E>>> splitBetweenIndexed(bool Function(int index, E first, E second) test) =>
+  Coral<List<List<E>>> splitBetweenIndexed(
+          bool Function(int index, E first, E second) test) =>
       coral.map((source) => List<List<E>>.unmodifiable(
-            source.splitBetweenIndexed(test).map((s) => List<E>.unmodifiable(s)),
+            source
+                .splitBetweenIndexed(test)
+                .map((s) => List<E>.unmodifiable(s)),
           ));
 
   /// Returns true if no elements satisfy [test] reactively.
-  Coral<bool> none(bool Function(E element) test) => coral.map((source) => source.none(test));
+  Coral<bool> none(bool Function(E element) test) =>
+      coral.map((source) => source.none(test));
 
   /// Returns true if no elements satisfy an indexed predicate [test] reactively.
-  Coral<bool> noneIndexed(bool Function(int index, E element) test) =>
-      coral.map((source) => !source.indexed.any((pair) => test(pair.$1, pair.$2)));
+  Coral<bool> noneIndexed(bool Function(int index, E element) test) => coral
+      .map((source) => !source.indexed.any((pair) => test(pair.$1, pair.$2)));
 
   /// Returns true if any element satisfies an indexed predicate [test] reactively.
-  Coral<bool> anyIndexed(bool Function(int index, E element) test) =>
-      coral.map((source) => source.indexed.any((pair) => test(pair.$1, pair.$2)));
+  Coral<bool> anyIndexed(bool Function(int index, E element) test) => coral
+      .map((source) => source.indexed.any((pair) => test(pair.$1, pair.$2)));
 
   /// Returns true if all elements satisfy an indexed predicate [test] reactively.
-  Coral<bool> everyIndexed(bool Function(int index, E element) test) =>
-      coral.map((source) => source.indexed.every((pair) => test(pair.$1, pair.$2)));
+  Coral<bool> everyIndexed(bool Function(int index, E element) test) => coral
+      .map((source) => source.indexed.every((pair) => test(pair.$1, pair.$2)));
 
   /// Splits this collection into chunks of [size] elements reactively.
-  Coral<List<List<E>>> slices(int size) => coral.map((source) => List<List<E>>.unmodifiable(
-        source.slices(size).map((s) => List<E>.unmodifiable(s)),
-      ));
+  Coral<List<List<E>>> slices(int size) =>
+      coral.map((source) => List<List<E>>.unmodifiable(
+            source.slices(size).map((s) => List<E>.unmodifiable(s)),
+          ));
 }
 
-extension NullableCoralElementsExtension<E extends Object> on CoralIterableElements<E?> {
+extension NullableCoralElementsExtension<E extends Object>
+    on CoralIterableElements<E?> {
   /// Returns a list of all non-null elements of this collection reactively.
   Coral<List<E>> get whereNotNull =>
       coral.map((source) => List.unmodifiable(source.whereNotNull()));
 }
 
-extension IterableIterableCoralElementsExtension<T> on CoralIterableElements<Iterable<T>> {
+extension IterableIterableCoralElementsExtension<T>
+    on CoralIterableElements<Iterable<T>> {
   /// Flattens this collection of iterables into a single iterable reactively.
-  Coral<List<T>> get flattenedToList => coral.map((source) => List.unmodifiable(source.flattened));
+  Coral<List<T>> get flattenedToList =>
+      coral.map((source) => List.unmodifiable(source.flattened));
 
   /// Flattens this collection of iterables into a single set reactively.
   Coral<Set<T>> get flattenedToSet =>
