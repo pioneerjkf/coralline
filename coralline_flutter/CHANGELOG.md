@@ -1,3 +1,7 @@
+## 0.1.1
+
+- Align `meta` package version constraint (`^1.18.0`) with Flutter SDK pinned dependencies.
+
 ## 0.1.0
 
 - Initial release of Coralline Flutter state management framework.
