@@ -1,3 +1,7 @@
+## 0.1.3
+
+- Remove `@awaitNotRequired` annotations from animation controller delegates to maintain 100% static analysis compatibility with Flutter SDK (`meta: ^1.18.0`).
+
 ## 0.1.2
 
 - Add comprehensive Architecture Deep Dive documentation (`doc/architecture_analysis.md`).

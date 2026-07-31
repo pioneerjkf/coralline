@@ -391,7 +391,6 @@ base class ResilientAnimationController extends Animation<double>
   /// ```dart
   /// controller.forward(from: 0.0);
   /// ```
-  @awaitNotRequired
   TickerFuture forward({double? from}) => _delegate.forward(from: from);
 
   /// Starts running this animation in reverse (towards the beginning).
@@ -411,7 +410,6 @@ base class ResilientAnimationController extends Animation<double>
   /// ```dart
   /// controller.reverse(from: 1.0);
   /// ```
-  @awaitNotRequired
   TickerFuture reverse({double? from}) => _delegate.reverse(from: from);
 
   /// Toggles the direction of this animation.
@@ -433,7 +431,6 @@ base class ResilientAnimationController extends Animation<double>
   /// ```dart
   /// controller.toggle();
   /// ```
-  @awaitNotRequired
   TickerFuture toggle({double? from}) => _delegate.toggle(from: from);
 
   /// Drives the animation from its current value to the given target, "forward".
@@ -455,7 +452,6 @@ base class ResilientAnimationController extends Animation<double>
   /// ```dart
   /// controller.animateTo(0.8, duration: const Duration(milliseconds: 200));
   /// ```
-  @awaitNotRequired
   TickerFuture animateTo(double target,
           {Duration? duration, Curve curve = Curves.linear}) =>
       _delegate.animateTo(target, duration: duration, curve: curve);
@@ -479,7 +475,6 @@ base class ResilientAnimationController extends Animation<double>
   /// ```dart
   /// controller.animateBack(0.2);
   /// ```
-  @awaitNotRequired
   TickerFuture animateBack(double target,
           {Duration? duration, Curve curve = Curves.linear}) =>
       _delegate.animateBack(target, duration: duration, curve: curve);
@@ -506,7 +501,6 @@ base class ResilientAnimationController extends Animation<double>
   /// ```dart
   /// controller.repeat(reverse: true);
   /// ```
-  @awaitNotRequired
   TickerFuture repeat({
     double? min,
     double? max,
@@ -536,7 +530,6 @@ base class ResilientAnimationController extends Animation<double>
   /// ```dart
   /// controller.fling(velocity: 2.0);
   /// ```
-  @awaitNotRequired
   TickerFuture fling({
     double velocity = 1.0,
     SpringDescription? springDescription,
@@ -564,7 +557,6 @@ base class ResilientAnimationController extends Animation<double>
   /// ```dart
   /// controller.animateWith(customSimulation);
   /// ```
-  @awaitNotRequired
   TickerFuture animateWith(Simulation simulation) =>
       _delegate.animateWith(simulation);
 
@@ -585,7 +577,6 @@ base class ResilientAnimationController extends Animation<double>
   /// ```dart
   /// controller.animateBackWith(customSimulation);
   /// ```
-  @awaitNotRequired
   TickerFuture animateBackWith(Simulation simulation) =>
       _delegate.animateBackWith(simulation);
 
