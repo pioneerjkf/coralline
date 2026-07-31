@@ -1,3 +1,8 @@
+## 0.1.2
+
+- Add comprehensive Architecture Deep Dive documentation (`doc/architecture_analysis.md`).
+- Update core and extensions dependency constraints to `^0.1.1`.
+
 ## 0.1.1
 
 - Align `meta` package version constraint (`^1.18.0`) with Flutter SDK pinned dependencies.
