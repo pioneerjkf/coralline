@@ -111,10 +111,6 @@ abstract base class CorallineTerminalIntent {
 /// ⚠️ **AI & Developer Note (Anti-Pattern Prevention):**
 /// - **Mandatory Disposal**: You MUST call [deactivate] when the terminal is
 ///   discarded (e.g., in a Flutter Widget's `dispose()`) to prevent memory leaks.
-/// - **Do NOT** access `.snapshot` or `.data` inside the `onDirty` callback.
-/// - **Pure Pull-Data Protocol**: The `onDirty` callback MUST only schedule a tick
-///   (e.g., `setState()` or `markNeedsBuild()`). Data extraction and state guarding
-///   (`isEmpty`, `isDamaged`) MUST be deferred to a separate schedule or tick (e.g., inside `build()` or `scheduleMicrotask()`).
 sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
   CorallineTerminal(super.inbound, {required super.onDirty}) : intent = null;
 
@@ -212,11 +208,6 @@ sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
 ///
 /// It mixes in [CoralSnapshotDelegator] to provide direct, type-safe access
 /// to the underlying `T` data payload without manually unwrapping the inbound.
-///
-/// ⚠️ **AI & Developer Note (Anti-Pattern Prevention):**
-/// - **Do NOT** access `.snapshot` or `.data` inside the `onDirty` callback.
-/// - The `onDirty` callback MUST only schedule a tick (e.g., `setState()` or `markNeedsBuild()`).
-/// - Extraction and state guarding (`isEmpty`, `isDamaged`) MUST be deferred to a separate schedule or tick (e.g., inside `build()` or `scheduleMicrotask()`).
 base class CoralTerminal<T> extends CorallineTerminal<Coral<T>> with CoralSnapshotDelegator<T> {
   CoralTerminal(super.inbound, {required super.onDirty});
 
@@ -234,11 +225,6 @@ base class CoralTerminal<T> extends CorallineTerminal<Coral<T>> with CoralSnapsh
 ///
 /// It mixes in [TrunkSnapshotDelegator] to provide direct, type-safe access
 /// to the underlying `T` data payload without manually unwrapping the inbound.
-///
-/// ⚠️ **AI & Developer Note (Anti-Pattern Prevention):**
-/// - **Do NOT** access `.snapshot` or `.data` inside the `onDirty` callback.
-/// - The `onDirty` callback MUST only schedule a tick (e.g., `setState()` or `markNeedsBuild()`).
-/// - Extraction and state guarding (`isEmpty`, `isDamaged`) MUST be deferred to a separate schedule or tick (e.g., inside `build()` or `scheduleMicrotask()`).
 base class TrunkTerminal<T> extends CorallineTerminal<Trunk<T>> with TrunkSnapshotDelegator<T> {
   TrunkTerminal(super.inbound, {required super.onDirty});
 

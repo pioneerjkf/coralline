@@ -139,10 +139,6 @@ When synchronous in-memory, asynchronous I/O, and parallel Isolate sources conve
 
 ### 6. Terminal Best Practices & Anti-Patterns
 
-#### 🚨 Anti-Patterns
-1. **Extracting Data inside `onDirty`**: Never call `terminal.snapshot` or `terminal.data` inside `onDirty`. Doing so forces main thread execution on every signal, leading to UI jank.
-2. **Blind Unwrapping**: Calling `.data` directly without checking `.isEmpty` or `.isDamaged` risks throwing a `CoralSnapshotExtractionException`.
-
 #### ✅ Best Practices
 1. **Tick Deferral**: Use `onDirty` strictly for scheduling (`setState()`, `markNeedsBuild()`, or `scheduleMicrotask()`).
 2. **State-Guarded Extraction**: Interrogate `snap.isEmpty` and `snap.isDamaged` before accessing `.data`.
