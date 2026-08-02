@@ -9,7 +9,7 @@ part of '../coralline.dart';
 /// This extension allows any [Future] to be integrated as a reactive [Coral] node,
 /// allowing asynchronous computations to be lazily computed and managed within
 /// the topology graph.
-extension FutureThatMixesCoral<T> on Future<T> {
+extension FutureCoralExtension<T> on Future<T> {
   /// Converts this [Future] into a reactive [Coral] node.
   ///
   /// Subscription to the [Future] (`.then`) is deferred until the returned [Coral]
@@ -52,7 +52,7 @@ extension FutureThatMixesCoral<T> on Future<T> {
 }
 
 /// A convenience extension that groups multiple [Future]s into a lifecycle-managed [Trunk].
-extension FutureCollectionThatMixesTrunk<T> on Iterable<Future<T>> {
+extension FutureCollectionTrunkExtension<T> on Iterable<Future<T>> {
   /// Converts this collection of [Future]s into a unified [Trunk] of [Coral]s.
   ///
   /// This is useful for grouping multiple concurrent asynchronous tasks
@@ -68,7 +68,7 @@ extension FutureCollectionThatMixesTrunk<T> on Iterable<Future<T>> {
 /// This extension enables any [Stream] to be converted into a reactive [Coral] node,
 /// integrating event streams into the declarative topology of Coralline with lazy
 /// subscription management.
-extension StreamThatMixesCoral<T> on Stream<T> {
+extension StreamCoralExtension<T> on Stream<T> {
   /// Converts this [Stream] into a reactive [Coral] node.
   ///
   /// Subscription to the [Stream] is deferred until the returned [Coral] node
@@ -128,7 +128,7 @@ extension StreamThatMixesCoral<T> on Stream<T> {
 }
 
 /// A convenience extension that bridges [StreamController] with the Coralline pipeline.
-extension StreamControllerThatMixesCoral<T> on StreamController<T> {
+extension StreamControllerCoralExtension<T> on StreamController<T> {
   /// Converts this [StreamController]'s stream into a reactive [Coral] node.
   ///
   /// Subscription to the underlying stream is deferred until the returned [Coral] node
@@ -165,7 +165,7 @@ extension StreamControllerThatMixesCoral<T> on StreamController<T> {
 }
 
 /// A convenience extension that groups multiple [Stream]s into a lifecycle-managed [Trunk].
-extension StreamCollectionThatMixesTrunk<T> on Iterable<Stream<T>> {
+extension StreamCollectionTrunkExtension<T> on Iterable<Stream<T>> {
   /// Converts this collection of [Stream]s into a unified [Trunk] of [Coral]s.
   ///
   /// This bundles multiple distinct event streams into a single topology node,
