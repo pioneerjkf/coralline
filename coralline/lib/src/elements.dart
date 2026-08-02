@@ -77,10 +77,12 @@ extension type CoralIterableElements<E>._(Coral<Iterable<E>> _coral) {
   Coral<bool> any(bool Function(E element) test) => _coral.map((source) => source.any(test));
 
   /// Returns a list containing the elements of this iterable reactively.
-  Coral<List<E>> toList() => _coral.map((source) => List.unmodifiable(source));
+  Coral<List<E>> toList({bool growable = false}) =>
+      _coral.map((source) => growable ? List.of(source, growable: true) : List.unmodifiable(source));
 
   /// Returns a set containing the elements of this iterable reactively.
-  Coral<Set<E>> toSet() => _coral.map((source) => Set.unmodifiable(source.toSet()));
+  Coral<Set<E>> toSet({bool unmodifiable = true}) =>
+      _coral.map((source) => unmodifiable ? Set.unmodifiable(source.toSet()) : source.toSet());
 
   /// Returns the number of elements reactively.
   Coral<int> get length => _coral.map((source) => source.length);
@@ -281,6 +283,12 @@ extension type CoralListElements<E>._(Coral<List<E>> _coral) implements CoralIte
 
   /// Returns an unmodifiable [Map] view of this list reactively.
   Coral<Map<int, E>> asMap() => _coral.map((list) => Map.unmodifiable(list.asMap()));
+
+  /// Adapts this list to be a `Coral<List<T>>` reactively.
+  Coral<List<T>> cast<T>() => _coral.map((list) => List.castFrom<E, T>(list));
+
+  /// Returns an unmodifiable list containing all elements of this list reactively.
+  Coral<List<E>> toUnmodifiable() => _coral.map((list) => List.unmodifiable(list));
 }
 
 /// **Core Concept (Set Element Proxy):**
@@ -298,6 +306,12 @@ extension type CoralSetElements<E>._(Coral<Set<E>> _coral) implements CoralItera
 
   /// Computes the difference between this set and [other] reactively.
   Coral<Set<E>> difference(Set<E> other) => _coral.map((set) => Set.unmodifiable(set.difference(other)));
+
+  /// Adapts this set to be a `Coral<Set<T>>` reactively.
+  Coral<Set<T>> cast<T>() => _coral.map((set) => Set.castFrom<E, T>(set));
+
+  /// Returns an unmodifiable set containing all elements of this set reactively.
+  Coral<Set<E>> toUnmodifiable() => _coral.map((set) => Set.unmodifiable(set));
 }
 
 /// **Core Concept (Map Element Proxy):**
@@ -342,4 +356,10 @@ extension type CoralMapElements<K, V>._(Coral<Map<K, V>> _coral) {
 
   /// Checks if this map is not empty.
   Coral<bool> get isNotEmpty => _coral.map((source) => source.isNotEmpty);
+
+  /// Adapts this map to be a `Coral<Map<K2, V2>>` reactively.
+  Coral<Map<K2, V2>> cast<K2, V2>() => _coral.map((map) => Map.castFrom<K, V, K2, V2>(map));
+
+  /// Returns an unmodifiable map containing all entries of this map reactively.
+  Coral<Map<K, V>> toUnmodifiable() => _coral.map((map) => Map.unmodifiable(map));
 }

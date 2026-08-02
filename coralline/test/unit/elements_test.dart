@@ -222,6 +222,12 @@ void main() {
         final c8 = Coral<List<int>>.data([10, 20, 30, 20, 40]);
         final tAsMap = c8.elements.asMap().toTerminal(() {});
 
+        final c9 = Coral<List<num>>.data([10, 20, 30]);
+        final tCast = c9.elements.cast<int>().toTerminal(() {});
+
+        final c10 = Coral<List<int>>.data([10, 20, 30]);
+        final tUnmodifiable = c10.elements.toUnmodifiable().toTerminal(() {});
+
         tIndex.activate();
         tReversed.activate();
         tIndexOf.activate();
@@ -230,6 +236,8 @@ void main() {
         tLastIndexOf.activate();
         tSublist.activate();
         tAsMap.activate();
+        tCast.activate();
+        tUnmodifiable.activate();
 
         expect(tIndex.snapshot.data, 20);
         expect(tReversed.snapshot.data, [40, 20, 30, 20, 10]);
@@ -239,6 +247,9 @@ void main() {
         expect(tLastIndexOf.snapshot.data, 3);
         expect(tSublist.snapshot.data, [20, 30, 20]);
         expect(tAsMap.snapshot.data, {0: 10, 1: 20, 2: 30, 3: 20, 4: 40});
+        expect(tCast.snapshot.data, [10, 20, 30]);
+        expect(tUnmodifiable.snapshot.data, [10, 20, 30]);
+        expect(() => tUnmodifiable.snapshot.data[0] = 99, throwsUnsupportedError);
 
         tIndex.deactivate();
         tReversed.deactivate();
@@ -248,6 +259,8 @@ void main() {
         tLastIndexOf.deactivate();
         tSublist.deactivate();
         tAsMap.deactivate();
+        tCast.deactivate();
+        tUnmodifiable.deactivate();
       });
     });
 
@@ -265,20 +278,33 @@ void main() {
         final c4 = Coral<Set<int>>.data({1, 2, 3, 4});
         final tDifference = c4.elements.difference({1, 2}).toTerminal(() {});
 
+        final c5 = Coral<Set<num>>.data({1, 2, 3});
+        final tCastSet = c5.elements.cast<int>().toTerminal(() {});
+
+        final c6 = Coral<Set<int>>.data({1, 2, 3});
+        final tUnmodifiableSet = c6.elements.toUnmodifiable().toTerminal(() {});
+
         tLookup.activate();
         tIntersection.activate();
         tUnion.activate();
         tDifference.activate();
+        tCastSet.activate();
+        tUnmodifiableSet.activate();
 
         expect(tLookup.snapshot.data, 3);
         expect(tIntersection.snapshot.data, {3, 4});
         expect(tUnion.snapshot.data, {1, 2, 3, 4, 5, 6});
         expect(tDifference.snapshot.data, {3, 4});
+        expect(tCastSet.snapshot.data, {1, 2, 3});
+        expect(tUnmodifiableSet.snapshot.data, {1, 2, 3});
+        expect(() => tUnmodifiableSet.snapshot.data.add(4), throwsUnsupportedError);
 
         tLookup.deactivate();
         tIntersection.deactivate();
         tUnion.deactivate();
         tDifference.deactivate();
+        tCastSet.deactivate();
+        tUnmodifiableSet.deactivate();
       });
     });
 
@@ -330,6 +356,25 @@ void main() {
         tIsEmpty.activate();
         tIsNotEmpty.activate();
 
+        final c11 = Coral<Map<String, num>>.data({'a': 1, 'b': 2});
+        final tCastMap = c11.elements.cast<String, int>().toTerminal(() {});
+
+        final c12 = Coral<Map<String, int>>.data({'a': 1, 'b': 2});
+        final tUnmodifiableMap = c12.elements.toUnmodifiable().toTerminal(() {});
+
+        tSubscript.activate();
+        tContainsKey.activate();
+        tContainsValue.activate();
+        tMap.activate();
+        tWhere.activate();
+        tKeys.activate();
+        tValues.activate();
+        tLength.activate();
+        tIsEmpty.activate();
+        tIsNotEmpty.activate();
+        tCastMap.activate();
+        tUnmodifiableMap.activate();
+
         expect(tSubscript.snapshot.data, 2);
         expect(tContainsKey.snapshot.data, isTrue);
         expect(tContainsValue.snapshot.data, isTrue);
@@ -340,6 +385,9 @@ void main() {
         expect(tLength.snapshot.data, 3);
         expect(tIsEmpty.snapshot.data, isFalse);
         expect(tIsNotEmpty.snapshot.data, isTrue);
+        expect(tCastMap.snapshot.data, {'a': 1, 'b': 2});
+        expect(tUnmodifiableMap.snapshot.data, {'a': 1, 'b': 2});
+        expect(() => tUnmodifiableMap.snapshot.data['c'] = 3, throwsUnsupportedError);
 
         tSubscript.deactivate();
         tContainsKey.deactivate();
@@ -351,6 +399,8 @@ void main() {
         tLength.deactivate();
         tIsEmpty.deactivate();
         tIsNotEmpty.deactivate();
+        tCastMap.deactivate();
+        tUnmodifiableMap.deactivate();
       });
     });
 
