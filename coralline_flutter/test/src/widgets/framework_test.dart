@@ -217,6 +217,33 @@ void main() {
       computation.didUpdateIntent(newIntent: widgetIntent);
       computation.didUpdateIntent(newIntent: _NonWidgetIntent());
     });
+
+    test('didUpdateBuildContext hook is invoked when bound context changes', () {
+      final computation = _TestHookContextComputation();
+      final ctx1 = _InstantContext();
+      final ctx2 = _InstantContext();
+
+      final intent1 = CoralWidgetTerminalIntent(context: ctx1);
+      final intent2 = CoralWidgetTerminalIntent(context: ctx2);
+
+      // Initial binding (null -> ctx1)
+      computation.didUpdateIntent(oldIntent: null, newIntent: intent1);
+      expect(computation.updateCallCount, 1);
+      expect(computation.lastOldContext, isNull);
+      expect(computation.lastNewContext, ctx1);
+
+      // Context transition (ctx1 -> ctx2)
+      computation.didUpdateIntent(oldIntent: intent1, newIntent: intent2);
+      expect(computation.updateCallCount, 2);
+      expect(computation.lastOldContext, ctx1);
+      expect(computation.lastNewContext, ctx2);
+
+      // Decoupling (ctx2 -> null)
+      computation.didUpdateIntent(oldIntent: intent2, newIntent: null);
+      expect(computation.updateCallCount, 3);
+      expect(computation.lastOldContext, ctx2);
+      expect(computation.lastNewContext, isNull);
+    });
   });
 
   group('CoralBuildContextExtensions Detailed Scope & MediaQuery Tests', () {
@@ -405,6 +432,28 @@ base class _TestStringCoralOfComputation extends ComplexComputation<Widget>
 
   @override
   Widget compute() => Text(valueCoral.data);
+}
+
+base class _TestHookContextComputation extends ComplexComputation<Widget>
+    with CorallineTerminalIntentAware, CorallineBuildContextAware {
+  BuildContext? lastOldContext;
+  BuildContext? lastNewContext;
+  int updateCallCount = 0;
+
+  @override
+  void didUpdateBuildContext(BuildContext? oldContext, BuildContext? newContext) {
+    super.didUpdateBuildContext(oldContext, newContext);
+    lastOldContext = oldContext;
+    lastNewContext = newContext;
+    updateCallCount++;
+  }
+
+  @override
+  @manifestSync
+  Iterable<CoralNode> manifest() => [context];
+
+  @override
+  Widget compute() => const Text('HookTest');
 }
 
 class _InstantContext implements BuildContext {

@@ -128,6 +128,15 @@ void main() {
       expect(computation.textThemeCoral.data.bodyLarge?.fontSize, equals(24.0));
       expect(computation.iconThemeCoral.data.color, equals(Colors.green));
     });
+
+    test('scaffoldProxy and themeProxy context getters expose Coral<BuildContext>', () {
+      final dummyCoral = Coral<BuildContext>.empty();
+      final scaffoldProxy = CoralBuildContextMaterialExtension(dummyCoral).material.scaffold;
+      final themeProxy = CoralBuildContextMaterialExtension(dummyCoral).material.theme;
+
+      expect(scaffoldProxy.context, equals(dummyCoral));
+      expect(themeProxy.context, equals(dummyCoral));
+    });
   });
 }
 

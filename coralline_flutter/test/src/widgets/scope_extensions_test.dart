@@ -248,6 +248,25 @@ void main() {
         expect(computation.iconThemeCoral.data.color, equals(Colors.blue));
       });
     });
+
+    // =========================================================================
+    // 6. Proxy context Getters
+    // =========================================================================
+    group('Proxy Context Getters Tests', () {
+      test('proxy.context exposes underlying Coral<BuildContext>', () {
+        final dummyCoral = Coral<BuildContext>.empty();
+
+        final mediaQueryProxy = CoralBuildContextMediaQueryExtension(dummyCoral).mediaQuery;
+        final textProxy = CoralBuildContextTextExtension(dummyCoral).text;
+        final localizationProxy = CoralBuildContextLocalizationExtension(dummyCoral).localization;
+        final scopeProxy = CoralBuildContextScopeExtension(dummyCoral).scope;
+
+        expect(mediaQueryProxy.context, equals(dummyCoral));
+        expect(textProxy.context, equals(dummyCoral));
+        expect(localizationProxy.context, equals(dummyCoral));
+        expect(scopeProxy.context, equals(dummyCoral));
+      });
+    });
   });
 }
 

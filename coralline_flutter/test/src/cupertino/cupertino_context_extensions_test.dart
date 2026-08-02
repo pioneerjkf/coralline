@@ -123,6 +123,13 @@ void main() {
       expect(computation.levelCoral.data,
           equals(CupertinoUserInterfaceLevelData.elevated));
     });
+
+    test('cupertino themeProxy context getter exposes Coral<BuildContext>', () {
+      final dummyCoral = Coral<BuildContext>.empty();
+      final themeProxy = CoralBuildContextCupertinoExtension(dummyCoral).cupertino.theme;
+
+      expect(themeProxy.context, equals(dummyCoral));
+    });
   });
 }
 
