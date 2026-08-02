@@ -12,16 +12,25 @@ base class _EntryCoral<T> extends CoralNode with _DirtyPoint, CoralSnapshotDeleg
   @override
   void _didRerouteClearancePoint({_ClearancePoint? oldClearance, _ClearancePoint? newClearance}) {}
 
+  CoralSnapshot<T> _snapshot = CoralSnapshot.empty();
+
+  bool _isPullPending = false;
+
   @mustCallSuper
+  @pragma('vm:prefer-inline')
   void _performForwarding(final CoralSnapshot<T> snapshot) {
-    if (identical(snapshot, _snapshot)) return;
     _snapshot = snapshot;
+    if (_isPullPending) return;
+    _isPullPending = true;
     _pushDirty();
   }
 
   @override
-  CoralSnapshot<T> get snapshot => _snapshot;
-  CoralSnapshot<T> _snapshot = CoralSnapshot.empty();
+  @pragma('vm:prefer-inline')
+  CoralSnapshot<T> get snapshot {
+    _isPullPending = false;
+    return _snapshot;
+  }
 }
 
 base class _DistinctEntryCoral<T> extends _EntryCoral<T> {

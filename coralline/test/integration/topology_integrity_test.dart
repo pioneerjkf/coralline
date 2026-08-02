@@ -93,6 +93,7 @@ void main() {
         controllerA.coral,
         intent: intent,
         onDirty: () {
+          controllerA.snapshot;
           controllerA.set(100);
         },
       );

@@ -125,8 +125,10 @@ void main() {
       final coral = controller.stream.toCoral(distinct: true);
 
       int onDirtyCount = 0;
-      final terminal = coral.toTerminal(() {
+      late final CoralTerminal<int> terminal;
+      terminal = coral.toTerminal(() {
         onDirtyCount++;
+        terminal.snapshot;
       });
       terminal.activate();
 

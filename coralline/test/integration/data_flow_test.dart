@@ -30,7 +30,7 @@ void main() {
       source.set(3);
 
       expect(computationCount, 0, reason: 'Data computation must be delayed until .snapshot is called');
-      expect(dirtyCount, 3, reason: 'Dirty notifications must trigger immediately for UI updates');
+      expect(dirtyCount, 1, reason: 'Dirty notifications are coalesced until .snapshot is pulled');
 
       // Now pull data
       expect(terminal.snapshot.dataOrNull, 3);
@@ -351,7 +351,7 @@ void main() {
         source.set(i);
       }
 
-      expect(dirtyCount, 1000);
+      expect(dirtyCount, 1, reason: 'Bursty mutations without pull are coalesced into a single dirty notification');
       expect(computationCount, 0, reason: 'Data computation must stay at 0 regardless of bursty mutation count');
 
       // Now pull final value
