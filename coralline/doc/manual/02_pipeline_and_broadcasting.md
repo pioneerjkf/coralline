@@ -140,13 +140,12 @@ When synchronous in-memory, asynchronous I/O, and parallel Isolate sources conve
 ### 6. Terminal Best Practices & Anti-Patterns
 
 #### ✅ Best Practices
-1. **Tick Deferral**: Use `onDirty` strictly for scheduling (`setState()`, `markNeedsBuild()`, or `scheduleMicrotask()`).
-2. **State-Guarded Extraction**: Interrogate `snap.isEmpty` and `snap.isDamaged` before accessing `.data`.
-3. **Encapsulated Guard Pattern (`Coral.guard`)**: Protect lazy composite nodes by wrapping exposed coral getters:
+1. **State-Guarded Extraction**: Interrogate `snap.isEmpty` and `snap.isDamaged` before accessing `.data`.
+2. **Encapsulated Guard Pattern (`Coral.guard`)**: Protect lazy composite nodes by wrapping exposed coral getters:
    ```dart
    @override
    Coral<T> get coral => _guardCoral;
    late final Coral<T> _guardCoral = super.coral.guard(canProceed: () => iterateInbound().areAllValid());
    ```
-4. **Mandatory Cleanup**: Always invoke `terminal.deactivate()` when unmounting widgets or tearing down services.
+3. **Mandatory Cleanup**: Always invoke `terminal.deactivate()` when unmounting widgets or tearing down services.
 

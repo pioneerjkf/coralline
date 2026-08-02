@@ -99,9 +99,8 @@ assert(() {
 In traditional Push-Data engines (RxDart, Streams), emitting a new payload forces immediate downstream callback invocation. Under high-frequency background events (e.g. 1,000 updates/sec from an isolate), the main thread executes transformation callbacks 1,000 times, causing main-thread frame thrashing (Jank).
 
 Coralline decouples **Signaling** (`onDirty`) from **Data Extraction** (`snapshot` / `data`):
-1. **Push-Dirty (`onDirty`)**: A parameterless `void Function()` callback. Its sole job is to notify Flutter's engine to schedule a render tick (`setState` / `markNeedsBuild`).
-2. **Coalescing**: Flutter batches 1,000 dirty notifications into a single VSYNC render tick.
-3. **Pull-Data (`snapshot`)**: The widget's `build()` method pulls the snapshot synchronously on the VSYNC tick. Intermediate payloads are safely ignored without ever materializing in memory or wasting CPU cycles.
+1. **Coalescing**: Flutter batches 1,000 dirty notifications into a single VSYNC render tick.
+2. **Pull-Data (`snapshot`)**: The widget's `build()` method pulls the snapshot synchronously on the VSYNC tick. Intermediate payloads are safely ignored without ever materializing in memory or wasting CPU cycles.
 
 #### `ComplexComputation` & Encapsulated State Guards (`Coral.guard`)
 Lazy N:1 composite nodes like `ComplexComputation` evaluate upstream dependencies on demand. If an uninitialized upstream node yields an `Empty` snapshot during evaluation, extracting `.data` throws a `CoralSnapshotExtractionException`, mutating an expected `Empty` state into `Damaged`.
