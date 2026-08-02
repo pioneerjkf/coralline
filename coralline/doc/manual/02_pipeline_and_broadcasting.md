@@ -137,7 +137,7 @@ When synchronous in-memory, asynchronous I/O, and parallel Isolate sources conve
 
 <br><br>
 
-### 6. Terminal Best Practices & Anti-Patterns
+### 6. Terminal Best Practices & Design Guidelines
 
 #### ✅ Best Practices
 1. **State-Guarded Extraction**: Interrogate `snap.isEmpty` and `snap.isDamaged` before accessing `.data`.

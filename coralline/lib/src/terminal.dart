@@ -107,10 +107,6 @@ abstract base class CorallineTerminalIntent {
 /// // Extension method
 /// final terminal = pipeline.toTerminal(() => setState(() {}));
 /// ```
-///
-/// ⚠️ **AI & Developer Note (Anti-Pattern Prevention):**
-/// - **Mandatory Disposal**: You MUST call [deactivate] when the terminal is
-///   discarded (e.g., in a Flutter Widget's `dispose()`) to prevent memory leaks.
 sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
   CorallineTerminal(super.inbound, {required super.onDirty}) : intent = null;
 
