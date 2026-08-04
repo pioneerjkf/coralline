@@ -58,13 +58,15 @@ abstract base class _TerminalPoint<C extends CoralNode> extends _CorallineLifecy
           terminalIntent.handleUncaughtError(error, stackTrace);
           return;
         } catch (handlerError, handlerStack) {
-          // If the handler fails, loudly warn in debug mode.
-          assert(
-            false,
-            '🚨 [Coralline] terminalIntent.handleUncaughtError failed!\n'
-            'Handler Error: $handlerError\n'
-            'Handler StackTrace:\n$handlerStack',
-          );
+          // If the handler fails, log in debug mode without re-throwing assertion cascade.
+          assert(() {
+            print(
+              '\n🚨 [Coralline] terminalIntent.handleUncaughtError failed!\n'
+              'Handler Error: $handlerError\n'
+              'Handler StackTrace:\n$handlerStack\n',
+            );
+            return true;
+          }());
           // BUG FIX: Report the original pipeline error, not the handler's error.
           Zone.current.handleUncaughtError(error, stackTrace);
           return;
@@ -74,13 +76,15 @@ abstract base class _TerminalPoint<C extends CoralNode> extends _CorallineLifecy
       Zone.current.handleUncaughtError(error, stackTrace);
     } catch (fatalError, fatalStack) {
       // The absolute worst-case scenario: Zone's error handler itself threw an exception.
-      // We swallow it here to prevent the reactive framework's core loops from crashing.
-      assert(
-        false,
-        '🚨 [Coralline] Fatal error inside _handleUncaughtError!\n'
-        'Zone Error: $fatalError\n'
-        'Zone StackTrace:\n$fatalStack',
-      );
+      // We log it in debug mode without cascading assertions.
+      assert(() {
+        print(
+          '\n🚨 [Coralline] Fatal error inside _handleUncaughtError!\n'
+          'Zone Error: $fatalError\n'
+          'Zone StackTrace:\n$fatalStack\n',
+        );
+        return true;
+      }());
     }
   }
 

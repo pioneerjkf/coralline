@@ -38,15 +38,19 @@ abstract base class CorallineTerminalIntent {
   /// Invoked when the pipeline encounters an unexpected error that cannot be
   /// safely encapsulated within a `damaged` data snapshot.
   void handleUncaughtError(Object error, StackTrace stackTrace) {
-    // In debug mode, loudly expose the error to prevent silent failures.
-    assert(
-      false,
-      '🚨 [Coralline] Uncaught Error Detected in Pipeline\n'
-      'Error: $error\n'
-      'StackTrace:\n$stackTrace',
-    );
+    // In debug mode, log the formatted error cleanly without throwing an assertion cascade.
+    assert(() {
+      print(
+        '\n======================================\n'
+        '🚨 [Coralline] Uncaught Error Detected in Pipeline\n'
+        'Error: $error\n'
+        'StackTrace:\n$stackTrace\n'
+        '======================================\n',
+      );
+      return true;
+    }());
 
-    // In release mode, silently delegate to the Zone's error handler.
+    // Delegate to the Zone's error handler.
     Zone.current.handleUncaughtError(error, stackTrace);
   }
 }
