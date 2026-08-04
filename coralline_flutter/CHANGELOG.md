@@ -1,3 +1,12 @@
+## 0.1.4
+
+### Refactoring & Fixes
+- Update `coralline` and `coralline_extensions` dependency constraints to `^0.1.2`.
+- Ensure robust uncaught error handling integration with upgraded `coralline 0.1.2` core engine.
+
+### Tests
+- Add comprehensive unit tests for `BuildContext` proxies and reactive lifecycle hooks.
+
 ## 0.1.3
 
 - Remove `@awaitNotRequired` annotations from animation controller delegates to maintain 100% static analysis compatibility with Flutter SDK (`meta: ^1.18.0`).
