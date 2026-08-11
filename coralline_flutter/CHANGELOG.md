@@ -1,3 +1,7 @@
+## 0.1.5
+
+- Update `coralline` and `coralline_extensions` dependency constraints to `^0.1.3`.
+
 ## 0.1.4
 
 ### Refactoring & Fixes
