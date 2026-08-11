@@ -193,8 +193,17 @@ base class _ResourceCoral<T> extends CoralNode with CoralSnapshotDelegator<T> im
   @override
   void _activate() {
     super._activate();
+    final oldSnapshot = _snapshot;
+    _snapshot = null;
+    if (oldSnapshot != null && oldSnapshot.isValid) {
+      try {
+        _disposeResource.call(oldSnapshot.data);
+      } catch (error, stackTrace) {
+        _handleUncaughtError(error, stackTrace);
+      }
+    }
     try {
-      _snapshot ??= CoralSnapshot(_createResource.call());
+      _snapshot = CoralSnapshot(_createResource.call());
     } catch (error, stackTrace) {
       _snapshot = CoralSnapshot.damaged(error, stackTrace);
     }

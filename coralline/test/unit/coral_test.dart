@@ -87,6 +87,36 @@ void main() {
 
         expect(disposed, isTrue);
       });
+
+      test('Coral.resource disposes existing snapshot if present before creating new one on activation', () {
+        int createCount = 0;
+        final disposedResources = <int>[];
+
+        final resourceCoral = Coral.resource(
+          create: () => ++createCount,
+          dispose: (res) => disposedResources.add(res),
+        );
+
+        // Access snapshot prior to activation (sets _snapshot to empty)
+        expect(resourceCoral.snapshot.isEmpty, isTrue);
+
+        final terminal = resourceCoral.toTerminal(() {});
+        terminal.activate();
+
+        expect(resourceCoral.data, 1);
+        expect(disposedResources, isEmpty);
+
+        // Deactivate and re-activate to verify disposal of old snapshot resource
+        terminal.deactivate();
+        expect(disposedResources, [1]);
+
+        terminal.activate();
+        expect(resourceCoral.data, 2);
+        expect(disposedResources, [1]);
+
+        terminal.deactivate();
+        expect(disposedResources, [1, 2]);
+      });
     });
 
     group('CoralExtension.observeLifecycle Tests', () {
