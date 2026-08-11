@@ -1,3 +1,8 @@
+## 0.1.3
+
+### Fixes
+- Safely dispose existing valid resource snapshots before re-creating resources upon `Coral.resource` node activation.
+
 ## 0.1.2
 
 ### Performance
