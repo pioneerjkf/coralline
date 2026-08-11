@@ -2,6 +2,7 @@
 // Use of this source code is governed by an Apache 2.0 license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
 import 'package:test/test.dart';
 import 'package:coralline/coralline.dart';
 
@@ -116,6 +117,63 @@ void main() {
 
         terminal.deactivate();
         expect(disposedResources, [1, 2]);
+      });
+
+      test('Coral.resource sets damaged snapshot when create throws exception', () {
+        final resourceCoral = Coral.resource(
+          create: () => throw Exception('Creation failed'),
+          dispose: (_) {},
+        );
+
+        final terminal = resourceCoral.toTerminal(() {});
+        terminal.activate();
+
+        expect(resourceCoral.snapshot.isDamaged, isTrue);
+        expect(resourceCoral.snapshot.error, isA<Exception>());
+      });
+
+      test('Coral.resource handles exception in dispose callback via uncaught error handler during deactivation', () {
+        final resourceCoral = Coral.resource(
+          create: () => 'resource',
+          dispose: (_) => throw Exception('Disposal failed'),
+        );
+
+        final terminal = resourceCoral.toTerminal(() {});
+        terminal.activate();
+        expect(resourceCoral.data, 'resource');
+
+        Object? uncaughtError;
+        runZonedGuarded(() {
+          terminal.deactivate();
+        }, (error, stack) {
+          uncaughtError = error;
+        });
+
+        expect(uncaughtError, isA<Exception>());
+      });
+
+      test('Coral.resource handles exception in dispose callback via uncaught error handler during re-activation', () {
+        int count = 0;
+        final resourceCoral = Coral.resource(
+          create: () => ++count,
+          dispose: (_) => throw Exception('Disposal failed'),
+        );
+
+        final terminal = resourceCoral.toTerminal(() {});
+        terminal.activate();
+        expect(resourceCoral.data, 1);
+
+        // Deactivate and re-activate with failing dispose handled via Zone
+        Object? uncaughtError;
+        runZonedGuarded(() {
+          terminal.deactivate();
+          terminal.activate();
+        }, (error, stack) {
+          uncaughtError = error;
+        });
+
+        expect(uncaughtError, isA<Exception>());
+        expect(resourceCoral.data, 2);
       });
     });
 
