@@ -389,7 +389,7 @@ extension TrunkComputationExtension<S> on Trunk<S> {
   /// final phoneValidationCoral = createPhoneValidationPipeline();
   ///
   /// // 2. A pipeline representing the user's currently selected tab (Email vs Phone)
-  /// final loginMethodCoral = Coral.value(LoginMethod.email);
+  /// final loginMethodCoral = Coral.data(LoginMethod.email);
   ///
   /// // 3. Wrap the state in a Trunk to compute dynamic topological routing
   /// final authStateTrunk = Trunk.of([loginMethodCoral]);
@@ -411,10 +411,12 @@ extension TrunkComputationExtension<S> on Trunk<S> {
   /// });
   ///
   /// // 5. Final UI Terminal: The Submit Button listens to the actively routed pipeline
-  /// isSubmitEnabledCoral.toTerminal((isValid) => submitButton.isEnabled = isValid);
+  /// final terminal = isSubmitEnabledCoral.toTerminal(() {
+  ///   submitButton.isEnabled = isSubmitEnabledCoral.data;
+  /// });
   /// ```
   ///
-  /// **AI & Developer Note (Topological Configuration):**
+  /// **Implementation note (Topological Configuration):**
   /// * [seal]: If `true`, the converged node is strictly bound to this parent and cannot be stolen.
   /// * [hotswap]: If `true`, swapping the dynamically generated node seamlessly transfers
   ///   activation states.

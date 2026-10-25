@@ -42,7 +42,7 @@ abstract base class CorallineTerminalIntent {
     assert(() {
       print(
         '\n======================================\n'
-        '🚨 [Coralline] Uncaught Error Detected in Pipeline\n'
+        '[Coralline:Error] Uncaught Error Detected in Pipeline\n'
         'Error: $error\n'
         'StackTrace:\n$stackTrace\n'
         '======================================\n',
@@ -55,9 +55,9 @@ abstract base class CorallineTerminalIntent {
   }
 }
 
-/// **Core Concept (Separation of Concerns):**
-/// The terminal Sink of the topological graph, serving as the definitive bridge
-/// between CoralNode's declarative pipelines and external imperative environments
+/// The terminal Sink of the topological graph, serving as the bridge to external environments.
+///
+/// Bridges CoralNode's declarative pipelines with external imperative environments
 /// (such as Flutter's Widget tree or traditional Dart Streams).
 ///
 /// If [CoralController] is the imperative Source that pushes dynamic data into
@@ -86,16 +86,16 @@ abstract base class CorallineTerminalIntent {
 /// As the destination of CoralNode's efficient architecture, the terminal plays
 /// a critical role in the 4-Phase Flow:
 ///
-/// **[Phase 1 & 2] Injection & Propagation (Upstream)**
+/// **Phase 1 & 2: Injection & Propagation (Upstream)**
 /// - The controller injects data, and a lightweight "Dirty" flag propagates down
 ///   the topological graph toward this terminal.
 ///
-/// **[Phase 3] Terminal Notification (Destination)**
+/// **Phase 3: Terminal Notification (Destination)**
 /// - Action: The "Dirty" flag hits the [CorallineTerminal].
 /// - Result: The terminal triggers its `onDirty` callback (e.g., `setState()`),
 ///   queuing a UI re-render, but does **NOT** compute or push data payloads.
 ///
-/// **[Phase 4] Pull-Data & Lazy Computation (Reverse Traversal)**
+/// **Phase 4: Pull-Data & Lazy Computation (Reverse Traversal)**
 /// - Action: During the UI render cycle, the external consumer explicitly requests
 ///   `.snapshot` or `.data` from the terminal.
 /// - Result: The terminal pulls data from its parent, triggering a reverse traversal
@@ -184,10 +184,11 @@ sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
   /// 3. **Error Delegation:** If upstream nodes throw unexpected exceptions during this
   ///    optimistic propagation, they are safely caught and routed to [CorallineTerminalIntent.handleUncaughtError].
   ///
-  /// ⚠️ **AI & Developer Note (Mandatory Cleanup):**
+  /// **Implementation note (Mandatory Cleanup):**
   /// You MUST call [deactivate] when this terminal is discarded (e.g., in a
   /// Flutter State's `dispose()` method). Failing to do so prevents upstream
-  /// nodes from realizing they are orphaned, causing severe memory leaks.
+  /// nodes from observing that this terminal is no longer active. Deactivate
+  /// terminals you create when their consumer is disposed.
   @mustCallSuper
   void deactivate() {
     if (_state.isDeactivated) return;

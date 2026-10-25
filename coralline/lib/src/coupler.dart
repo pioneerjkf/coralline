@@ -28,7 +28,7 @@ part of '../coralline.dart';
 ///   a mooring scheduler to ensure they can be cleanly garbage collected, preventing
 ///   memory leaks.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Swapping nodes during active execution requires `hotswap: true` to be set during
 /// initialization. Attempting to couple a node strongly owned by a non-detachable parent
 /// will throw a [CoralNodeReleaseViolationException].
@@ -36,10 +36,10 @@ part of '../coralline.dart';
 /// ## Example: Hotswapping Data Sources
 /// ```dart
 /// // 1. Define two different data sources
-/// final mockApi = Coral.value(UserProfile(name: 'Guest', isPremium: false));
-/// final liveApi = Coral.stream(
-///   webSocketClient.stream.map((json) => UserProfile.fromJson(json)),
-/// );
+/// final mockApi = Coral.data(UserProfile(name: 'Guest', isPremium: false));
+/// final liveApi = webSocketClient.stream
+///     .map((json) => UserProfile.fromJson(json))
+///     .toCoral();
 ///
 /// // 2. Create a coupler starting with the mock source (Guest state)
 /// final coupler = CoralCoupler<UserProfile>(mockApi, hotswap: true);
@@ -108,7 +108,7 @@ sealed class CoralCoupler<T> implements CoralProvider<T> {
   /// * The previously attached node is decoupled and transferred to a mooring scheduler
   ///   for safe garbage collection.
   ///
-  /// **AI & Developer Note (Ownership Constraints):**
+  /// **Implementation note (Ownership Constraints):**
   /// Attempting to couple a node strongly owned by a non-detachable parent will throw a
   /// [CoralNodeReleaseViolationException]. However, if the old parent is detachable
   /// (e.g., another coupler with `seal: false`), the node will release itself and transfer
@@ -177,7 +177,7 @@ sealed class CoralCoupler<T> implements CoralProvider<T> {
 /// Follows the identical lifecycle guarantees and garbage collection (Mooring)
 /// safety mechanisms as [CoralCoupler].
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Swapping trunks during active execution requires `hotswap: true` to be set during
 /// initialization. Attempting to couple a trunk strongly owned by a non-detachable parent
 /// will throw a [CoralNodeReleaseViolationException].
@@ -253,7 +253,7 @@ sealed class TrunkCoupler<T> implements TrunkProvider<T> {
   /// * The previously attached group is decoupled and transferred to a mooring scheduler
   ///   for safe garbage collection.
   ///
-  /// **AI & Developer Note (Ownership Constraints):**
+  /// **Implementation note (Ownership Constraints):**
   /// Attempting to couple a group strongly owned by a non-detachable parent will throw a
   /// [CoralNodeReleaseViolationException]. However, if the old parent is detachable
   /// (e.g., another coupler with `seal: false`), the group will release itself and transfer

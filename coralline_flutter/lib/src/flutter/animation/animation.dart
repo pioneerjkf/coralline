@@ -1,3 +1,7 @@
+// Copyright 2023-2026 Youngjune Jeon All rights reserved.
+// Use of this source code is governed by an Apache 2.0 license that can be
+// found in the LICENSE file.
+
 part of '../../../animation.dart';
 
 /// A state-resilient, lifecycle-managed [AnimationController] wrapper powered by [Coral].
@@ -20,7 +24,7 @@ part of '../../../animation.dart';
 /// It also implements [CoralProvider<double>], optionally broadcasting value changes when
 /// [broadcast] is `true`.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - Do not manually call `engine.dispose()` directly on the underlying [AnimationController].
 ///   Resource disposal must be handled via the [coral] lifecycle manager or [dispose].
 /// - Parameter updates performed while dormant will be synchronized into the active engine
@@ -54,10 +58,10 @@ part of '../../../animation.dart';
 ///   late final animation = controller.drive(_expansionTween);
 ///
 ///   @override
-///   Iterable<CoralNode> manifest() sync* {
+///   Iterable<CoralNode> manifest() => [
 ///     // 3. Register controller.coral in the reactive node topology.
-///     yield controller.coral;
-///   }
+///     controller.coral,
+///   ];
 ///
 ///   @override
 ///   Widget build() {
@@ -599,7 +603,7 @@ base class ResilientAnimationController extends Animation<double>
   /// **Ensures:**
   /// * Disposes the active or dormant delegate and notifies parent listeners.
   ///
-  /// **AI & Developer Note:**
+  /// **Implementation note:**
   /// After calling [dispose], this controller cannot be reused.
   ///
   /// **Example:**

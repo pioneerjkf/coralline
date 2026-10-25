@@ -1,67 +1,81 @@
 # Coralline Extensions
 
-The official extension library for the [Coralline](https://pub.dev/packages/coralline) framework. Seamlessly integrates Dart's `Future`, `Stream`, and `Iterable` into the `CoralNode` declarative pipeline architecture.
-
-<br>
+The official extension library for the [Coralline](https://pub.dev/packages/coralline) framework, bringing reactive pipeline operations to Dart collections and iterables.
 
 ---
-
-<br>
 
 ## Features
 
-- **`Future.toCoral()`**: Transforms any Dart `Future` into a reactive `Coral` node.
-- **`Stream.toCoral()`**: Transforms any Dart `Stream` into a reactive `Coral` node.
-- **`Iterable.toTrunk()`**: Bundles multiple Futures or Streams into a single, lifecycle-managed `Trunk`.
+`coralline_extensions` enhances `Coral<Iterable<E>>` and `Coral<List<E>>` nodes with reactive collection pipelines via the `.elements` proxy:
 
-<br>
-
----
-
-<br>
-
-## The Magic of Lazy Lifecycles
-
-Bridging `Future` and `Stream` directly into a UI pipeline often introduces memory leaks or unnecessary background computations. `coralline_extensions` solves this using the "Push-Dirty, Pull-Data" architecture of the `CoralNode` framework:
-
-### 1. Lazy Computation
-Standard Dart `Future.then()` or `Stream.listen()` execute eagerly. This extension library defers all subscriptions until the resulting `Coral` pipeline is actually **Active** (e.g., when a UI component attaches a `CoralTerminal`). If the terminal is never activated, the data is never fetched.
-
-### 2. Auto-Cleanup (Zero Memory Leaks)
-When a `CoralTerminal` is deactivated (e.g., when a Flutter widget is disposed), the underlying `Stream` subscription is **automatically cancelled**. You no longer need to manually manage `StreamSubscription` objects.
-
-### 3. Fail-Fast Safety
-If a `Future` or `Stream` emits an error, it is automatically captured and safely converted into a `CoralSnapshot.damaged` state. This physically prevents corrupted or missing data from progressing further down the pipeline.
-
-<br>
+- **Aggregations & Statistics**:
+  - `coral.elements.sum`: Reactively computes the sum of `num`, `int`, or `double` collections.
+  - `coral.elements.average`: Reactively computes the arithmetic mean.
+- **Comparable Extrema**:
+  - `coral.elements.minOrNull`: Reactively tracks the minimum element.
+  - `coral.elements.maxOrNull`: Reactively tracks the maximum element.
+- **Transformations & Filtering**:
+  - `coral.elements.where(predicate)`: Reactive filtering pipeline node.
+  - `coral.elements.map(transform)`: Reactive projection pipeline node.
+  - `coral.elements.firstWhereOrNull(test)`: Safe search yielding `null` when not found.
+- **List Operations**:
+  - `coral.elements.sorted([compare])`: Reactively maintains a sorted view.
+  - `coral.elements.binarySearch(element, [compare])`: Binary search over sorted collections.
+  - `coral.elements.lowerBound(element, [compare])`: Lower bound search index.
 
 ---
 
-<br>
+## Installation
+
+Add `coralline` and `coralline_extensions` to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  coralline: ^0.1.3
+  coralline_extensions: ^0.1.3
+```
+
+---
 
 ## Quick Start
 
 ```dart
-import 'dart:async';
-import 'package:coralline_extensions/async.dart';
+import 'package:coralline/coralline.dart';
+import 'package:coralline_extensions/coralline_extensions.dart';
 
 void main() {
-  // 1. Convert a Stream to a Coral (Supports distinct and custom equality)
-  final streamController = StreamController<int>();
-  final streamCoral = streamController.stream.toCoral(distinct: true);
+  // 1. Create a reactive controller holding a collection of numbers (with broadcast enabled for multiple subscribers)
+  final numbersController =
+      CoralController<List<double>>([10.0, 20.0, 30.0], broadcast: true);
 
-  // 2. Attach a terminal. 
-  // THIS is the exact moment the stream actually gets subscribed to!
-  final terminal = streamCoral.toTerminal(() {
-    print("UI should rebuild! New data: ${streamCoral.data}");
-  });
-  terminal.activate();
+  // 2. Use coralline_extensions to calculate reactive sum and average
+  final sumCoral = numbersController.coral.elements.sum;
+  final avgCoral = numbersController.coral.elements.average;
 
-  // 3. Push data
-  streamController.add(100);
+  // 3. Attach terminals to listen and pull data
+  final sumTerminal = sumCoral.toTerminal(() {});
+  final avgTerminal = avgCoral.toTerminal(() {});
 
-  // 4. Cleanup 
-  // (Automatically unsubscribes from the Stream, preventing memory leaks!)
-  terminal.deactivate();
+  sumTerminal.activate();
+  avgTerminal.activate();
+
+  print('Sum: ${sumTerminal.data}'); // 60.0
+  print('Average: ${avgTerminal.data}'); // 20.0
+
+  // 4. Update collection reactively
+  numbersController.set([5.0, 15.0, 25.0, 35.0]);
+
+  print('Updated Sum: ${sumTerminal.data}'); // 80.0
+  print('Updated Average: ${avgTerminal.data}'); // 20.0
+
+  // Cleanup
+  sumTerminal.deactivate();
+  avgTerminal.deactivate();
 }
 ```
+
+---
+
+## License
+
+This project is licensed under the Apache License, Version 2.0. See the LICENSE file for details.

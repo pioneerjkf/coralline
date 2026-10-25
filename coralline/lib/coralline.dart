@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:meta/meta.dart';
+import 'package:meta/meta_meta.dart';
 
 part 'src/async.dart';
 part 'src/broadcaster.dart';

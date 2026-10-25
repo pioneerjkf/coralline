@@ -29,18 +29,18 @@ part of '../coralline.dart';
 /// **Intended Usage & Data Flow Architecture (Push-Dirty, Pull-Data):**
 /// As a 1:N distributor, it slightly modifies the standard data flow:
 ///
-/// **[Phase 2] Push-Dirty (Downstream Propagation)**
+/// **Phase 2: Push-Dirty (Downstream Propagation)**
 /// - When the upstream is dirty, the internal hidden terminal catches the signal,
-///   clears the internal cache ([_latestSnapshot]), and broadcasts the Dirty
+///   clears the internal cached snapshot, and broadcasts the Dirty
 ///   signal to all attached downstream consumers.
 ///
-/// **[Phase 4] Pull-Data & Lazy Computation (Reverse Traversal)**
+/// **Phase 4: Pull-Data & Lazy Computation (Reverse Traversal)**
 /// - When the first downstream consumer requests data, it pulls from the upstream,
 ///   computes it, and safely caches the result.
 /// - When the second (or Nth) consumer requests data in the same cycle, it
 ///   instantly receives the cached snapshot without triggering upstream computation.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - **No Intent Propagation**: If an upstream node requires a specific UI context
 ///   (Intent) to function, it MUST be placed *downstream* of this broadcaster,
 ///   as the broadcaster acts as a firewall and drops all intents.

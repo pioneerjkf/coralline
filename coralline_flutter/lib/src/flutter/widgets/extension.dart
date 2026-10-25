@@ -15,7 +15,7 @@ extension CoralBuildContextIconThemeExtension on Coral<BuildContext> {
   /// **Ensures:**
   /// * Emits updated [IconThemeData] derived from the active element context.
   ///
-  /// **AI & Developer Note:**
+  /// **Implementation note:**
   /// Always cache derived line nodes as `late final` fields to prevent dormant access errors.
   Coral<IconThemeData> get iconTheme => map((e) => IconTheme.of(e)).distinct();
 }

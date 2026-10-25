@@ -7,30 +7,29 @@
 [![Flutter SDK](https://img.shields.io/badge/Flutter-3.10+-02569B.svg?logo=flutter)](https://flutter.dev)
 [![Dart SDK](https://img.shields.io/badge/Dart-3.6+-0175C2.svg)](https://dart.dev)
 
-> **"Don't write boilerplates. To handle complex reactive pipelines, all you have to do is call a line (Coralline)."**  
-> *Stop tangling your logic wires—a composable pipeline for reactive structures. Simply call a line.*
+> *Compose reactive state as a pipeline of connected values.*
 
-**Coralline** is a high-performance, zero-overhead Dart & Flutter reactive state management framework powered by **CORAL** (**C**hain **o**f **R**eactivity **A**nd **L**azy-computation). Designed to solve computational flooding and verbosity in state management, Coralline models state processing after Flutter's `RenderObject` pipeline: **Push-Dirty ($O(1)$) + Pull-Data (Lazy)**.
+**Coralline** is a Dart and Flutter state management library based on reactive pipelines. Its core separates invalidation from reading derived values: upstream changes notify dependent nodes, and derived values are evaluated when read. The project describes this model as **Push-Dirty, Pull-Data**; the Flutter package connects it to widgets, while the core package has no Flutter dependency.
 
 <br>
 
 ---
 
-## 📦 Packages in this Repository
+## Packages in this Repository
 
 | Package | pub.dev | Description |
 | :--- | :--- | :--- |
 | [**`coralline`**](coralline/) | [![pub package](https://img.shields.io/pub/v/coralline.svg)](https://pub.dev/packages/coralline) | Pure Dart core engine implementing the Chain of Reactivity and Lazy Computation pipeline architecture. |
-| [**`coralline_extensions`**](coralline_extensions/) | [![pub package](https://img.shields.io/pub/v/coralline_extensions.svg)](https://pub.dev/packages/coralline_extensions) | Official extension library for reactive operations on Dart `Future`, `Stream`, `Iterable`, and `List`. |
-| [**`coralline_flutter`**](coralline_flutter/) | [![pub package](https://img.shields.io/pub/v/coralline_flutter.svg)](https://pub.dev/packages/coralline_flutter) | High-performance Flutter state management framework with zero-allocation single-dependency components and $O(1)$ context resolution. |
+| [**`coralline_extensions`**](coralline_extensions/) | [![pub package](https://img.shields.io/pub/v/coralline_extensions.svg)](https://pub.dev/packages/coralline_extensions) | Official extension library for reactive pipeline operations on Dart collections and iterables. |
+| [**`coralline_flutter`**](coralline_flutter/) | [![pub package](https://img.shields.io/pub/v/coralline_flutter.svg)](https://pub.dev/packages/coralline_flutter) | Flutter widgets and integrations for using Coralline pipelines in an application. |
 
 <br>
 
 ---
 
-## 💡 Why Coralline?
+## Why Coralline?
 
-Traditional push-based reactive frameworks (e.g., standard Streams or Signals) continuously flood heavy data payloads downstream on every mutation.
+In Coralline, a source update invalidates dependent pipeline values. The framework propagates change notifications separately from reading and computing derived values. This is one approach to reactive state; behavior and performance differ across libraries and workloads.
 
 ```mermaid
 flowchart LR
@@ -44,30 +43,30 @@ flowchart LR
 ### Phase 1: Push-Dirty (COR: Chain of Reactivity)
 ```mermaid
 flowchart LR
-    A1["CoralController"] -->|"Push-Dirty O(1)"| B1["CoralBroadcaster"]
+    A1["CoralController"] -->|"Push-Dirty"| B1["CoralBroadcaster"]
     B1 --> C1["Coral.diverge"]
     C1 --> D1["Trunk.converge"]
-    D1 -->|"O(1) Invalidation"| E1["CoralTerminal.onDirty"]
+    D1 -->|"Invalidation"| E1["CoralTerminal.onDirty"]
     E1 --> F1["UI Render Queue"]
 ```
-*(No data computation or memory allocation occurs during state mutation; only a lightweight $O(1)$ dirty flag is broadcast)*
+*(This stage notifies dependent nodes; it does not evaluate and push each derived data payload.)*
 
 ### Phase 2: Pull-Data (AL: And Lazy-computation)
 ```mermaid
 flowchart RL
-    F2["UI Render (Display)"] -->|"VSYNC Render Tick"| E2["CoralTerminal.snapshot"]
+    F2["Consumer reads value"] -->|"Read snapshot"| E2["CoralTerminal.snapshot"]
     E2 --> D2["Trunk.converge"]
     D2 -->|"Upstream Pull"| C2["Coral.diverge"]
     C2 --> B2["CoralBroadcaster"]
     B2 -->|"Fetch Cached Data"| A2["CoralController"]
 ```
-*(Data computation occurs strictly on demand during frame rendering, caching intermediate results automatically)*
+*(Dirty derived values are evaluated when read and may reuse cached results until invalidated.)*
 
 <br>
 
 ---
 
-## 🚀 Quick Start (Flutter)
+## Quick Start (Flutter)
 
 Add `coralline_flutter` to your `pubspec.yaml`:
 
@@ -75,7 +74,7 @@ Add `coralline_flutter` to your `pubspec.yaml`:
 dependencies:
   flutter:
     sdk: flutter
-  coralline_flutter: ^0.1.0
+  coralline_flutter: ^0.1.5
 ```
 
 ### 1:1 Inline Reactive Widget Example
@@ -118,19 +117,19 @@ class CounterApp extends StatelessWidget {
 
 ---
 
-## 📚 Technical Documentation & Manuals
+## Technical Documentation & Manuals
 
 Explore the in-depth documentation in the [`coralline/doc/manual`](coralline/doc/manual) directory:
 
-1. 🚀 [**Quickstart & Core Concepts Guide**](coralline/doc/manual/01_quickstart_and_concepts.md) — Build your first reactive pipeline in 5 minutes.
-2. 🔀 [**Pipeline & Broadcasting Guide**](coralline/doc/manual/02_pipeline_and_broadcasting.md) — Master 1:N sharing (`CoralBroadcaster`), dynamic topology (`CoralCoupler`), and snapshots.
-3. 📖 [**Public API Reference Manual**](coralline/doc/manual/03_public_api_reference.md) — Complete catalog of all public Classes, Mixins, and Extensions.
-4. 🔬 [**Flutter & Dart Engineering Whitepaper**](coralline/doc/manual/04_flutter_dart_engineers_whitepaper.md) — Deep technical analysis of Push-Dirty Pull-Data, Fasttrack $O(1)$, and Wasm performance.
+1. [**Quickstart & Core Concepts Guide**](coralline/doc/manual/01_quickstart_and_concepts.md) — Build your first reactive pipeline in 5 minutes.
+2. [**Pipeline & Broadcasting Guide**](coralline/doc/manual/02_pipeline_and_broadcasting.md) — Master 1:N sharing (`CoralBroadcaster`), dynamic topology (`CoralCoupler`), and snapshots.
+3. [**Public API Reference Manual**](coralline/doc/manual/03_public_api_reference.md) — Complete catalog of all public Classes, Mixins, and Extensions.
+4. [**Flutter & Dart Engineering Whitepaper**](coralline/doc/manual/04_flutter_dart_engineers_whitepaper.md) — Design details for the Push-Dirty, Pull-Data model and topology routing.
 
 <br>
 
 ---
 
-## 📄 License
+## License
 
 Coralline ecosystem libraries are licensed under the [Apache License 2.0](LICENSE).

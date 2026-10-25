@@ -15,7 +15,7 @@ part of '../../coralline.dart';
 /// parent [_Joint]. This strict ownership model prevents multi-parent references, diamond dependency
 /// bugs, and silent state corruption during declarative graph mutations.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Do not bypass [_releaseCoralNodeOrThrow] when transferring or detaching nodes. If a joint needs
 /// dynamic node detachment (e.g., hotswapping or coldswapping), override [_releaseCoralNodeOrThrow] in a
 /// specialized mixin rather than mutating `_joint` references directly.
@@ -71,7 +71,7 @@ base mixin _Joint on _CorallineLifecycle implements _CorallineTopology {
 /// directly to inlined property reads (`_clearancePoint` and `_terminalIntent`), ensuring minimal stack
 /// frame overhead during high-frequency reactive updates.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Subclasses extending [_JointNode] must mix in a specific inbound handler (such as [_Coralline] or [_Trunkline])
 /// to complete the inbound topology contract.
 abstract base class _JointNode extends CoralNode with _Joint {

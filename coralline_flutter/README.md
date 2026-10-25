@@ -5,24 +5,24 @@
 [![Flutter SDK](https://img.shields.io/badge/Flutter-3.10+-02569B.svg?logo=flutter)](https://flutter.dev)
 
 > **"Seamlessly bridge pure Dart reactive pipelines with Flutter's element tree."**  
-> *Zero-allocation single-stream components, $O(1)$ context dependency resolution, and lazy push-dirty pull-data widget rebuilds.*
+> *Single- and multi-dependency components, provider lookup through Flutter's widget tree, and push-dirty/pull-data integration.*
 
-**Coralline Flutter** (`coralline_flutter`) is a declarative, high-performance Flutter state management library and design pattern implementation built on **Coralline**'s **Chain of Reactivity** and **Lazy-computation Pipeline** (**CORAL**). It introduces zero-allocation single-stream UI components, automatic $O(1)$ context dependency resolution, and lazy push-dirty pull-data widget rebuilds directly inside Flutter's rendering pipeline.
-
-<br><br>
-
-## 🌟 Key Features
-
-- ⚡ **Zero-Allocation Single Dependency (`SimplexBuildComponent`)**: Ultra-optimized 1:1 binding between a reactive node and a UI component.
-- 🔗 **Multi-Dependency Reactive UI (`BuildComponent`)**: Pure, topological N:1 reactivity that updates widgets lazily only when declared upstream nodes emit dirty signals.
-- 🌉 **Intent-Driven Context Propagation (`CorallineBuildContextAware`)**: Safely access `Theme`, `MediaQuery`, and `InheritedWidget`s inside reactive business logic without leaking context references or breaking purity.
-- 💉 **Zero Prop-Drilling DI (`InheritedCoralProviderWidget` & `coralOf<T>()`)**: Seamlessly inject reactive providers into the Flutter element tree with $O(1)$ element tree lookups and cascade stream unwrapping.
-- 🎬 **Resilient Animations without `StatefulWidget` (`ResilientAnimationController` & Ticker Mixins)**: Drive Flutter animations natively within pure business components without leaking memory or requiring `StatefulWidget` boilerplate.
-- 🎯 **Push-Dirty, Pull-Data Efficiency**: Prevents unnecessary UI frame rendering and layout passes by computing widget trees strictly on demand.
+**Coralline Flutter** (`coralline_flutter`) connects Coralline's reactive pipelines to Flutter widgets. It includes components for declaring one or multiple reactive dependencies, provider widgets for scoped state access, context-aware helpers, and animation integrations. Flutter remains responsible for scheduling widget builds and rendering frames.
 
 <br><br>
 
-## 📦 Getting Started
+## Key Features
+
+- **Single Dependency (`SimplexBuildComponent`)**: Declares one upstream reactive node directly instead of using an iterable manifest.
+- **Multi-Dependency Reactive UI (`BuildComponent`)**: Pure, topological N:1 reactivity that updates widgets lazily only when declared upstream nodes emit dirty signals.
+- **Context Access (`CorallineBuildContextAware`)**: Read values such as `Theme`, `MediaQuery`, and inherited providers through the provided context-aware APIs. Follow the lifecycle rules of the component using them.
+- **Scoped Providers (`InheritedCoralProviderWidget` & `coralOf<T>()`)**: Place providers in the widget tree and access them from descendant Coralline components.
+- **Animation Integrations (`ResilientAnimationController` & ticker mixins)**: Connect Flutter animation controllers to Coralline lifecycle and reactive values. Review the API lifecycle requirements when using these helpers.
+- **Push-Dirty, Pull-Data**: Pipeline changes notify dependent components; derived values are read when the component evaluates them. Flutter still controls build scheduling.
+
+<br><br>
+
+## Getting Started
 
 Add `coralline_flutter` to your `pubspec.yaml`:
 
@@ -30,8 +30,8 @@ Add `coralline_flutter` to your `pubspec.yaml`:
 dependencies:
   flutter:
     sdk: flutter
-  coralline: ^0.1.0
-  coralline_flutter: ^0.1.0
+  coralline: ^0.1.3
+  coralline_flutter: ^0.1.5
 ```
 
 Or run:
@@ -42,7 +42,7 @@ flutter pub add coralline_flutter
 
 <br><br>
 
-## 💡 Key Concepts
+## Key Concepts
 
 ### 1. System Architecture & Flow Diagram
 
@@ -66,15 +66,15 @@ graph TD
 
     State -->|"Push Dirty Signal"| Computation
     InheritedProvider -->|"O(1) Element Tree Lookup"| ContextAware
-    Computation -->|"Cascade Stream"| ContextAware
+        Computation -->|"Reactive pipeline"| ContextAware
     ContextAware -->|"Lazy Pull Data on Frame"| TerminalWidget
 ```
 
-*(Zero-allocation signal propagation from pure Dart reactive nodes down to Flutter element terminals)*
+*(Reactive notifications connect Coralline nodes to Flutter elements.)*
 
 ### 2. Push-Dirty & Pull-Data Lazy Execution Flow
 
-Unlike traditional state management solutions that force immediate, eager rebuilds across entire widget trees, `coralline_flutter` treats UI rendering as the **terminal stage** of a lazy, reactive data computation pipeline.
+`coralline_flutter` connects reactive pipeline changes to Flutter components. A component reads its declared dependencies when it builds; Flutter decides when the build runs.
 
 ```mermaid
 sequenceDiagram
@@ -83,33 +83,31 @@ sequenceDiagram
     participant Pipeline as Coralline Pipeline
     participant Element as CoralWidgetElement
     participant Engine as Flutter Engine (Frame)
-
     State->>Pipeline: 1. State Mutated
-    Pipeline-->>Element: 2. Push-Dirty Signal (Zero-Allocation Flag)
-    Note over Element: Suppresses immediate markNeedsBuild()
-    Engine->>Element: 3. Render Frame Pipeline Phase
+    Pipeline-->>Element: 2. Change notification
+    Note over Element: Schedules work through Flutter integration
+    Engine->>Element: 3. Flutter build phase
     Element->>Pipeline: 4. Lazy Pull Computed Widget Data
     alt Widget Data Changed
-        Element->>Engine: 5. Render Updated Widget Tree (Zero-Jank!)
+        Element->>Engine: 5. Return updated widget tree
     else Widget Data Identical
         Element-->>Engine: Skip Layout & Paint
     end
 ```
 
-*(Pushes zero-allocation dirty flags during state mutation, pulling computed widget data strictly on VSYNC render frame)*
+*(The component reads pipeline values during its build; frame timing is managed by Flutter.)*
 
 ### 3. Topological Manifest (`@manifestSync`)
 
-Components declare their upstream reactive dependencies explicitly via `manifest()`. This guarantees zero-over-fetching state synchronization and prevents ghost re-renders.
+Components declare their upstream reactive dependencies through `manifest()`. Declaring dependencies lets Coralline connect the component to the nodes it reads; it does not guarantee that no other widget rebuilds occur.
 
 > [!NOTE]
-> **🛡️ Intent Firewall (Structural Intent Isolation)**
-> When a single reactive node is shared across multiple UI components (1:N topology), traditional MVI patterns can suffer from conflicting upstream intents. `coralline_flutter`'s topology structurally isolates upstream intents at broadcast split nodes (`CoralBroadcaster`), guaranteeing zero intent collisions without runtime filtering overhead.
+> **Intent Firewall (Structural Intent Isolation)**
+> When a reactive node is shared across components, use the documented broadcast topology. Coralline's terminal intents and graph ownership rules determine how notifications and errors are routed; see the broadcaster and terminal API docs for details.
 
 <br><br>
 
-
-## 🚀 Quick Start & Usage Examples
+## Quick Start & Usage Examples
 
 ### Example 1: 1:1 Inline Reactive Binding (`.map(...).toWidget()`)
 
@@ -347,7 +345,7 @@ Widget buildSafeUserCard(UserProfileCard component) {
 }
 ```
 
-> **💡 Pro Tip: App-Wide Shared Fallback Extension Pattern**
+> **Pro Tip: App-Wide Shared Fallback Extension Pattern**
 > Create a project-specific extension (e.g. `toAppWidget()`) to encapsulate your design system's default error UI and logging (e.g. Sentry, Firebase) globally across your entire app:
 > ```dart
 > extension AppCoralWidgetExtension<T extends CoralComputation<Widget>> on T {
@@ -367,22 +365,24 @@ Widget buildSafeUserCard(UserProfileCard component) {
 
 <br><br>
 
-## 🔍 Deep Dive: Structural Comparisons
+## Deep Dive: Structural Comparisons
 
 ### 1. State Management & DI: Traditional Provider vs InheritedCoralProvider
 
-`InheritedCoralProvider` & `coralOf<T>()` provides Dependency Injection (DI) and state propagation that fundamentally differs from traditional Flutter state management solutions like `package:provider` or raw `InheritedWidget`s in **architecture**, **rebuild execution**, and **context coupling**.
+`InheritedCoralProvider` and `coralOf<T>()` provide scoped dependency injection and state access through Flutter's inherited widget mechanism. The table compares the broad integration approaches; exact rebuild and lookup behavior depends on the implementation and usage.
 
-#### 📊 Feature Comparison Matrix (Native `InheritedWidget` vs `package:provider` vs Coralline)
+#### Feature Comparison Matrix (Native `InheritedWidget` vs `package:provider` vs Coralline)
 
 | Feature | Native Flutter<br>`InheritedWidget` | Traditional<br>`package:provider` | Coralline Provider<br>(`InheritedCoralProvider` + `coralOf<T>()`) |
 | :--- | :--- | :--- | :--- |
-| **Execution Paradigm** | **Push-Rebuild (Eager)**<br>`updateShouldNotify` forces immediate `markNeedsBuild()` across client elements. | **Push-Rebuild (Eager)**<br>`notifyListeners()` eagerly schedules client element rebuilds. | **Push-Dirty, Pull-Data (Lazy)**<br>Propagates zero-allocation dirty signals, computing UI strictly at frame render time. |
+| **Execution Paradigm** | Inherited dependency notifications can mark dependents for rebuilding. | Provider APIs expose several notification and selection patterns. | Coralline notifications mark declared pipeline dependencies dirty; components read values when they build. |
 | **`BuildContext` Coupling** | **Tightly Coupled to UI**<br>Must call `context.`<br>`dependOnInheritedWidgetOfExactType`<br>inside `build(context)`. | **Tightly Coupled to UI**<br>Must call `context.watch<T>()`<br>inside `Widget.build(context)`. | **Decoupled to Business Fields**<br>Declared as reactive fields in business classes via `CorallineBuildContextAware`<br>(`coralOf<T>()`). |
-| **Tree & State Transitions** | Manual listener re-registration on ancestor relocation. | Re-instantiating providers forces client element re-subscriptions and full widget rebuilds. | **Cascade Stream Flattening**<br>Automatically flattens tree position changes and inner `Coral<T>` data changes into a unified stream. |
-| **Tree Lookup Mechanics** | **$O(1)$ Native Lookup**<br>Uses Flutter engine's<br>`_inheritedElements` HashMap. | **$O(1)$ Native Lookup**<br>Leverages underlying<br>`InheritedWidget` HashMap mechanics. | **$O(1)$ Native Lookup (100% Inherited)**<br>Inherits native $O(1)$ lookup while suppressing forced-rebuild notifications. |
+| **Tree & State Transitions** | Inherited dependencies follow Flutter's widget and element lifecycle. | Provider scopes follow Flutter's widget and element lifecycle. | Provider lookup uses inherited widgets; Coralline APIs can map provider changes into pipeline values. |
+| **Tree Lookup Mechanics** | Uses Flutter inherited dependency lookup. | Uses Flutter inherited dependency lookup through provider APIs. | Uses `InheritedCoralProviderWidget` and Flutter's inherited dependency lookup. |
 
-#### 🔄 Architectural Flow Comparison
+#### Illustrative update flow
+
+The diagram is simplified. It describes one common path through each integration, not all rebuild behavior or performance characteristics.
 
 ```
 [ Traditional Provider (Push-Rebuild) ]
@@ -394,39 +394,39 @@ State Update
 
 [ coralline_flutter (Push-Dirty, Pull-Data Lazy Pipeline) ]
 State Update 
-  └─► Push-Dirty Signal Propagation (Zero-allocation flag update)
+  └─► Coralline dependency invalidation
         └─► Flutter Frame Pipeline Triggered
               └─► Terminal Pulls Computed Data Lazily
-                    └─► Rebuilds ONLY if computed Widget output actually changes
+              └─► Component reads its dependencies and returns a widget
 ```
 
-#### 🛡️ Core Advantages of `coralOf<T>()`
+#### Core Advantages of `coralOf<T>()`
 
-1. **Push-Dirty, Pull-Data Lazy Computation**: Avoids eager widget tree re-evaluations upon every state mutation. Computations run on demand during the frame phase, eliminating UI jank and unnecessary render passes.
-2. **Context Decoupling via Intent Architecture**: Eliminates `BuildContext` memory leaks and stale context bugs by passing context via reactive Intent streams without storing element references inside business logic.
+1. **Push-Dirty, Pull-Data**: Separates dependency invalidation from reading derived values. Flutter still determines when widget builds run.
+2. **Context Access**: The context-aware APIs make selected inherited values available to Coralline components. Follow their lifecycle requirements when retaining derived nodes or context-dependent values.
 3. **Automatic Cascade Stream Flattening**: `coralOf<T>()` internally evaluates:
    $$\text{coralOf<T>()} = \text{dependOn<InheritedCoralProviderWidget<T>>()}.\text{cascade}((\text{data}) \Rightarrow \text{data.provider.coral})$$
    It unifies both **ancestor widget tree transitions** and **inner state mutations** into a single, seamless `Coral<T>` stream.
-4. **Topological Graph Guarantees**: Enforces dependency registration in `manifest()` (`@manifestSync`), preventing untracked state lookups and hidden cascade rebuilds.
+4. **Declared Dependencies**: `manifest()` (`@manifestSync`) declares the component's reactive inputs so Coralline can connect and observe them.
 
-#### 💡 Architectural Rationale: Why Inherit `InheritedWidget` & Override Rebuilds?
+#### Architectural Rationale: Why Inherit `InheritedWidget` & Override Rebuilds?
 
 `coralline_flutter` does not reinvent a proprietary widget tree lookup mechanism. Instead, `InheritedCoralProviderWidget` directly extends Flutter's native `InheritedWidget` for 4 fundamental architectural reasons:
 
-1. **$O(1)$ Engine-Level Lookup Performance**: Leverages Flutter engine's internal `_inheritedElements` HashMap via `dependOnInheritedWidgetOfExactType` for instant $O(1)$ ancestor lookups without $O(N)$ tree-walking overhead.
-2. **Zero-Leak Element Lifecycle Management**: Automatically tracks and cleans up child element dependencies (`removeDependent`) when widgets unmount, completely eliminating ghost memory leaks common in global service locators.
+1. **Flutter Inherited Lookup**: Uses `InheritedWidget` and `dependOnInheritedWidgetOfExactType` to locate a provider and register the dependent element with Flutter.
+2. **Element Lifecycle**: Flutter tracks inherited dependencies for its elements and updates those relationships as the widget tree changes. Applications still need to manage Coralline objects they create directly.
 3. **Seamless Flutter Ecosystem Compatibility**: Effortlessly bridges native Flutter UI context providers (`Theme`, `MediaQuery`, `Localizations`) into pure reactive `Coral<T>` nodes via `CorallineBuildContextAware`.
 4. **Intuitive Scoped Dependency Injection**: Preserves familiar widget-tree-scoped DI patterns without requiring complex global container setups.
 
-> **Summary**: `coralline_flutter` inherits 100% of `InheritedWidget`'s $O(1)$ lookup and lifecycle safety, while **intercepting and suppressing (`_suppressMarkNeedsBuild`) its inefficient forced-rebuild notification pipeline** to replace it with Coralline's lazy push-dirty pull-data pipeline.
+> **Summary**: `InheritedCoralProviderWidget` uses Flutter's inherited widget mechanism for scoped lookup. Coralline's pipeline then provides its own dependency and value-reading behavior.
 
 <br><br>
 
 ### 2. Animation Engine: Traditional AnimationController vs ResilientAnimationController
 
-`ResilientAnimationController` integrates Flutter's animation engine with Coralline's reactive resource lifecycle, eliminating memory leaks and StatefulWidget boilerplate.
+`ResilientAnimationController` connects Flutter's animation controller to Coralline's reactive resource lifecycle. It offers an alternative to managing that integration directly in a `StatefulWidget`; applications should still follow the helper's lifecycle requirements.
 
-#### 📊 Feature Comparison Matrix
+#### Feature Comparison Matrix
 
 | Feature | Traditional `AnimationController` | Coralline `ResilientAnimationController` |
 | :--- | :--- | :--- |
@@ -441,44 +441,44 @@ State Update
 
 `BuildComponent` is **not** a traditional Flutter `Widget`. It is a pure Dart Coralline reactive computation node (`ComplexComputation<Widget>`) that exposes a Flutter-friendly `build()` interface.
 
-#### 💡 Two Fundamental Reasons `BuildComponent` Exists
+#### Two Fundamental Reasons `BuildComponent` Exists
 
 1. **Bridge Between Pure Dart Reactive Graphs and Flutter UI Trees**: Coralline's reactive engine operates in pure Dart. `BuildComponent` allows developers to write UI using familiar `build()` syntax while running natively inside Coralline's topological reactive graph.
-2. **Topological Dependency Guarantees (`@manifestSync`)**: `StatelessWidget` and `StatefulWidget` cannot explicitly declare upstream data dependencies, causing unneeded ghost rebuilds when parent widgets update. `BuildComponent` enforces `manifest()`, ensuring UI subtrees compute strictly when declared upstream nodes emit dirty signals.
+2. **Declared Dependencies (`@manifestSync`)**: `BuildComponent` uses `manifest()` to declare its reactive inputs. This is a different dependency style from the usual widget build and inherited dependency patterns; it does not replace Flutter's widget lifecycle.
 
 <br><br>
 
 ### 4. Architectural Comparison: Coralline vs BLoC vs Riverpod vs Signals
 
-Coralline Flutter's paradigm can be formally classified as a **Lazy-Computed Topological Reactive DAG based on MVI**. Below is a comparative breakdown against other popular Flutter and reactive state management frameworks:
+Coralline Flutter represents UI output as a reactive computation node. The table gives a high-level comparison of concepts; the libraries have different APIs and the comparison is not a benchmark:
 
 | Feature | Coralline Flutter | BLoC | Riverpod | Signals (Preact) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Architecture** | **Lazy-Computed DAG + MVI** | Monolithic State + MVI | Provider Graph (DAG) | Reactive Primitives |
-| **Data Propagation** | **Push-Dirty, Pull-Data (Lazy)** | Stream Push (Eager) | Eager / Microtask Push | Push-Dirty, Pull-Data |
+| **Data Propagation** | **Push-Dirty, Pull-Data** | Commonly modeled with events and states | Provider invalidation and recomputation patterns vary | Push-Dirty, Pull-Data |
 | **Intent Handling** | **Upstream Intent + Firewall** | Sink Event Dispatch | Notifier Direct Calls | Direct Signal Mutation |
-| **Rebuild Execution** | **Frame-Phase Lazy Pull** | Immediate Stream Listener | Immediate Invalidation | Direct Effect Trigger |
+| **Rebuild Execution** | Flutter schedules builds; components read their dependencies when building | Flutter schedules builds from BLoC state notifications | Flutter schedules builds according to provider changes | Depends on the signal and Flutter integration |
 | **Safety & Control** | **Intent Firewall + `catchDamaged`** | Runtime Try/Catch | `AsyncValue` Catch | Exception Propagation |
 | **Dynamic Hotswap** | **Native (`CoralCoupler` / `MooringPoint`)** | Manual Stream Rebind | `ref.watch` Dynamic Rebind | `effect` Re-track |
 
-#### 💡 Key Architectural Takeaways
+#### Key Architectural Takeaways
 
-- **vs BLoC**: Inherits BLoC's unidirectionally decoupled **MVI** philosophy, but replaces monolithic state objects with fine-grained DAG nodes and shifts eager stream pushes into VSYNC frame-phase **lazy data pulls**.
-- **vs Riverpod**: Inherits Riverpod's graph-based **DAG** topology, but replaces eager push propagation with $O(1)$ **zero-allocation dirty signals**, suppressing unnecessary widget rebuilds until frame rendering.
-- **vs Signals**: Shares the same **push-dirty pull-data** primitive mechanics, but elevates it into an enterprise framework by introducing **upstream Intent propagation**, **Intent Firewall**, and dynamic **Hotswap** (`CoralCoupler`).
+- **Compared with BLoC**: Both can be used to manage Flutter application state. Coralline centers its API on reactive value graphs; BLoC centers its API on events and states.
+- **Compared with Riverpod**: Both expose ways to connect dependencies and derive values. They differ in provider APIs, graph ownership, and lifecycle model.
+- **Compared with signals libraries**: Both can represent derived reactive values. The available operators and Flutter integration depend on the particular signals package.
 
 <br><br>
 
 
-## 🛠️ Performance Best Practices
+## Performance Best Practices
 
-1. **Prefer `SimplexBuildComponent` for Single Streams**: When a component reads from only one reactive node, using `SimplexBuildComponent` avoids `Iterable`/`List` allocations entirely during topological binding.
+1. **Use `SimplexBuildComponent` for one dependency**: It declares a single upstream node directly; `BuildComponent` uses an iterable manifest for multiple inputs.
 2. **Cache Derived Nodes in `late final` Fields**: Avoid calling `context.map(...)` repeatedly inside `build()` or `compute()`. Always store derived broadcaster line nodes in `late final` fields.
 3. **Use `.toWidget()` Helper**: Convert your `BuildComponent` or `Coral<Widget>` into a Flutter `Widget` using `.toWidget()` for standard, fluid Flutter composition.
 
 <br><br>
 
-## 📄 License
+## License
 
 Coralline Flutter is open-source software licensed under the [Apache 2.0 License](LICENSE).  
 Copyright 2023-2026 Youngjune Jeon All rights reserved.

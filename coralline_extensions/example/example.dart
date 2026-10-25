@@ -1,9 +1,14 @@
+// Copyright 2023-2026 Youngjune Jeon All rights reserved.
+// Use of this source code is governed by an Apache 2.0 license that can be
+// found in the LICENSE file.
+
 import 'package:coralline/coralline.dart';
 import 'package:coralline_extensions/coralline_extensions.dart';
 
 void main() {
-  // 1. Create a reactive controller holding a collection of numbers
-  final numbersController = CoralController<List<double>>([10.0, 20.0, 30.0]);
+  // 1. Create a reactive controller holding a collection of numbers (with broadcast enabled for multiple subscribers)
+  final numbersController =
+      CoralController<List<double>>([10.0, 20.0, 30.0], broadcast: true);
 
   // 2. Use coralline_extensions to calculate reactive sum and average
   final sumCoral = numbersController.coral.elements.sum;

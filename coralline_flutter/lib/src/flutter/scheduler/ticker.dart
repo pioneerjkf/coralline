@@ -31,7 +31,7 @@ class _CorallineLifecycleTicker extends Ticker {
 /// [CorallineBuildContextAware] capabilities to host animations cleanly while remaining responsive
 /// to lifecycle events and subtree ticker mode changes.
 ///
-/// ⚠️ **AI & Developer Note:**
+/// **Implementation note:**
 /// All created [Ticker]s must be disposed (typically via their managing animation controllers)
 /// before [didDeactivate] is invoked. Active tickers remaining during deactivation will throw
 /// an assertion error in debug mode to prevent ticker memory leaks.
@@ -210,7 +210,7 @@ base mixin TickerProviderCorallineLifecycleAwareMixin
 /// objects. Enforces single-use semantics to prevent accidental creation of extra tickers while
 /// automatically propagating lifecycle state.
 ///
-/// ⚠️ **AI & Developer Note:**
+/// **Implementation note:**
 /// Calling [createTicker] more than once on the same instance will throw an assertion error in debug mode.
 /// If multiple tickers are needed, use [TickerProviderCorallineLifecycleAwareMixin] instead.
 /// The created ticker must be disposed before calling `super.didDeactivate()`.

@@ -1,6 +1,6 @@
-# 📖 Coralline Public API Reference Manual
+# Coralline Public API Reference Manual
 
-This document serves as the complete reference catalog for all **Classes**, **Mixins**, **Extensions**, and **Exceptions** exported by `package:coralline/coralline.dart`.
+This document summarizes selected APIs exported by `package:coralline/coralline.dart`; it is not a complete catalog. For exact signatures and the full API surface, refer to the generated Dart API documentation.
 
 <br><br>
 
@@ -10,7 +10,7 @@ This document serves as the complete reference catalog for all **Classes**, **Mi
 - **Role**: Imperative data source node. Injects external data into the pipeline.
 - **Key Constructors**:
   - `CoralController(T initialValue, {bool broadcast = false, ...})`: Standard controller.
-  - `CoralController.lateLifecycle({bool broadcast = false, ...})`: Computes/provides data upon activation without initial value.
+  - `CoralController.lateLifecycle({bool broadcast = false, ...})`: Starts without an initial value and accepts lifecycle callbacks.
 - **Key Methods**:
   - `set(T value)`: Injects new data (publishes Push-Dirty notification).
   - `setGuarded(T Function() producer)`: Executes callback and converts thrown errors to Damaged snapshots.
@@ -25,11 +25,17 @@ This document serves as the complete reference catalog for all **Classes**, **Mi
   - `.map<R>(R Function(T) mapper)`: Synchronous transformation node.
   - `.cascade<R>(Coral<R> Function(T) cascade, {bool seal, bool hotswap, bool eager})`: 1:1 dynamic pipeline swapping node.
   - `.diverge<R>(Iterable<Coral<R>> Function(T) cascade, {bool seal, bool hotswap, bool eager})`: 1:N dynamic topological divergence node yielding a `Trunk<R>`.
-  - `.converge<R>(Coral<R> Function(Iterable<Coral<T>>) cascade)`: N:1 dynamic topological convergence node.
   - `.combine<O, R>(Coral<O> other, R Function(T, O) combiner)`: Combines 2 pipeline nodes.
-  - `.guard({bool Function()? canProceed})`: Wraps node with an encapsulated state guard shield to prevent `Empty`-to-`Damaged` extraction explosions.
+  - `.guard({bool Function()? canProceed})`: Adds a condition for whether the guarded computation can proceed.
   - `.toTerminal(onDirty)`: Connects a terminal subscriber.
-  - `.broadcast()`: Converts 1:1 pipeline to 1:N broadcaster node.
+  - `.toBroadcaster()`: Converts 1:1 pipeline to 1:N broadcaster node.
+
+### `Trunk<T>`
+- **Role**: Topological bundle of `Coral` nodes.
+- **Key Methods & Operators**:
+  - `.aggregate<R>(R Function(Iterable<Coral<T>>) aggregator)`: Aggregates multiple `Coral` lines into a single scalar computation node.
+  - `.combine()`: Combines all lines into a `List<T>`.
+  - `.converge<R>(Coral<R> Function(Iterable<Coral<T>>) cascade, {bool seal, bool hotswap, bool eager})`: N:1 dynamic topological convergence node.
 
 ### `CoralComputation<T>`
 - **Role**: Base class defining pure lazy computation logic.
@@ -47,10 +53,10 @@ This document serves as the complete reference catalog for all **Classes**, **Mi
 - **Role**: Final destination node (typically bound to Flutter Widget build cycle).
 - **Key Methods**:
   - `activate()`: Connects to upstream topology and starts listening for dirty flags.
-  - `deactivate()`: Unbinds terminal from upstream topology to prevent memory leaks.
+  - `deactivate()`: Ends observation and releases the terminal's upstream connection.
 
 ### `CoralSnapshot<T>`
-- **Role**: Immutable struct data box (`CoralSnapshotValid`, `CoralSnapshotEmpty`, `CoralSnapshotDamaged`).
+- **Role**: Immutable value wrapper with valid, empty, and damaged variants (`CoralSnapshotValid`, `CoralSnapshotEmpty`, `CoralSnapshotDamaged`).
 
 <br><br>
 
@@ -64,7 +70,7 @@ This document serves as the complete reference catalog for all **Classes**, **Mi
 ### 3. Public Extensions
 
 - `ListCoralElementsExtension`, `SetCoralElementsExtension`, `MapCoralElementsExtension`, `IterableCoralElementsExtension`: Collection pipeline utilities.
-- `AsyncCoralExtension`, `AsyncTrunkExtension`: Asynchronous mapping and debouncing.
+- `FutureCoralExtension`, `FutureCollectionTrunkExtension`, `StreamCoralExtension`, `StreamControllerCoralExtension`, `StreamCollectionTrunkExtension`: Asynchronous mapping and stream integration.
 - `CoralCollectionExtension`: Combines list of coral nodes (`combineAll`).
 - `CorallineDebugExtension`: Prints ASCII DAG tree representation (`.toDebugString()`).
 

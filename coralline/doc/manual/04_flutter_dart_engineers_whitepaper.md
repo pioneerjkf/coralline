@@ -1,6 +1,6 @@
-# 🔬 Engineering Whitepaper for Flutter & Dart Engineers
+# Engineering Whitepaper for Flutter & Dart Engineers
 
-**Coralline Engine Architecture: Zero-Overhead Push-Dirty Pull-Data Reactivity & Fasttrack $O(1)$ Routing**
+**Coralline Engine Architecture: Push-Dirty, Pull-Data Reactivity and Fasttrack Routing**
 
 > **Author**: Youngjune Jeon  
 > **Target Audience**: Flutter Framework Engineers, Dart VM/Compiler Engineers, Software Architects
@@ -9,15 +9,17 @@
 
 ### 1. Executive Summary
 
-In modern declarative UI frameworks (Flutter, React, SwiftUI), one of the most critical engineering bottlenecks is **computational flooding**. Event-driven streams (Rx/Stream) or atomic signals push data transformations downstream eagerly, causing duplicate computations and frame drops (Jank) within a single event loop.
+This document describes the intended design and implementation of Coralline. Complexity and performance statements below refer to specific code paths; they are not comparative benchmark results. End-to-end costs depend on graph shape, operators, and consumer behavior.
 
-**Coralline** solves this bottleneck with a pure Dart reactive engine built on a **Push-Dirty, Pull-Data** architecture and **Fasttrack $O(1)$ Direct Pointer Bypass**, 100% mirrored from Flutter's low-level rendering pipeline (`RenderObject`).
+Reactive applications can do unnecessary work when every update triggers transformations that a consumer does not need. Evaluation strategies differ across frameworks and operators, so the actual cost should be measured for the workload in question.
+
+**Coralline** uses a **Push-Dirty, Pull-Data** model: updates invalidate dependent nodes, and consumers read derived values as needed. Its fasttrack code caches routing information for selected graph operations. This is conceptually similar to parts of Flutter's invalidation and deferred-work model, but Coralline is not an implementation of Flutter's `RenderObject` pipeline.
 
 <br><br>
 
 ### 2. Structural Mirroring with Flutter `RenderObject` Pipeline
 
-Flutter maintains smooth 60-120 FPS frame rates by lazily evaluating layout operations.
+Flutter schedules rendering work through its frame pipeline. Coralline can be connected to Flutter widgets, but it does not control frame scheduling or guarantee a frame rate.
 
 ```mermaid
 sequenceDiagram
@@ -45,7 +47,7 @@ sequenceDiagram
 | **Invalidation Notice** | `markNeedsLayout()` (Flags dirty state only) | `_pushDirty()` (O(1) Snapshot invalidation) |
 | **Coalescing Buffer** | Frame Scheduler holds build until VSYNC | Coalescing Phase (`_isDirtyPending` flag) |
 | **Compute Execution** | Engine calls `performLayout()` backwards | `Terminal` calls `.data` / `.snapshot` |
-| **Execution Frequency**| Exactly 1 converged pass per frame | Exactly 1 lazy compute pass per UI render |
+| **Execution Frequency**| Scheduled by Flutter's rendering pipeline | Dirty values are computed when read and cached until invalidated |
 
 <br><br>
 
@@ -53,7 +55,7 @@ sequenceDiagram
 
 Traditional tree-based reactive engines traverse parent chains recursively during invalidation, causing **$O(d)$** ($d$=tree depth) overhead.
 
-`_CorallineFasttrack` pre-caches clearance points at structural topology mutation time ($O(\text{subtree})$), reducing runtime state update notification cost to **$O(1)$**.
+`_CorallineFasttrack` pre-caches clearance points when topology changes. The cached pointer can avoid a parent-chain lookup on the relevant routing path; total update work still depends on the affected graph and downstream notifications.
 
 ```mermaid
 graph LR
@@ -66,9 +68,9 @@ graph LR
 
 <br><br>
 
-### 4. Zero-Overhead Assertions in Release Builds
+### 4. Development Assertions and Release Builds
 
-Framework invariant checks (DAG cycle checks, intent firewalls, 1:1 ownership checks) protect developers during development, but must incur **0.00% overhead** in production release builds.
+Framework invariant checks (including cycle and ownership checks) are intended to catch invalid graphs during development. Dart assertions are disabled in production modes where assertions are disabled, but that does not mean the entire framework has zero release overhead.
 
 ```dart
 // Actual internal integrity assertions in Coralline (lib/src/node.dart & _computation.dart)
@@ -90,17 +92,17 @@ assert(() {
 ```
 
 - **Release Build Optimization**: Dart AOT compiler strips `assert` blocks completely in release mode.
-- **Pure Dart 3 & Wasm Ready**: Zero dependencies on `dart:ui` or `flutter/widgets.dart` in the core engine. Fully optimized for Dart Wasm compilation.
+- **Pure Dart core**: The core package does not depend on `dart:ui` or `flutter/widgets.dart`. Compilation and performance on a particular Dart target should be verified with that target's toolchain.
 
 <br><br>
 
 ### 5. The Signaling vs Data Extraction Paradigm
 
-In traditional Push-Data engines (RxDart, Streams), emitting a new payload forces immediate downstream callback invocation. Under high-frequency background events (e.g. 1,000 updates/sec from an isolate), the main thread executes transformation callbacks 1,000 times, causing main-thread frame thrashing (Jank).
+In event-driven pipelines, listeners may process each delivered event. In Coralline, invalidation and value extraction are separate operations, so a consumer that reads after several updates can skip computing intermediate derived values. The result depends on how updates and reads are scheduled by the application.
 
 Coralline decouples **Signaling** (`onDirty`) from **Data Extraction** (`snapshot` / `data`):
-1. **Coalescing**: Flutter batches 1,000 dirty notifications into a single VSYNC render tick.
-2. **Pull-Data (`snapshot`)**: The widget's `build()` method pulls the snapshot synchronously on the VSYNC tick. Intermediate payloads are safely ignored without ever materializing in memory or wasting CPU cycles.
+1. **Scheduling**: Flutter schedules widget builds according to its own frame lifecycle; Coralline does not batch arbitrary notifications into a frame.
+2. **Pull-Data (`snapshot`)**: A widget can read the snapshot while building. If it reads after multiple source updates, derived values that were never read in between need not be computed for those intermediate states.
 
 #### `ComplexComputation` & Encapsulated State Guards (`Coral.guard`)
 Lazy N:1 composite nodes like `ComplexComputation` evaluate upstream dependencies on demand. If an uninitialized upstream node yields an `Empty` snapshot during evaluation, extracting `.data` throws a `CoralSnapshotExtractionException`, mutating an expected `Empty` state into `Damaged`.
@@ -141,22 +143,22 @@ To prevent infinite dirty signal cascades during structural graph mutations, `_C
 
 <br><br>
 
-### 7. Heterogeneous Source Evaluation & Isolate Offloading Architecture
+### 7. Async sources and application-managed background work
 
-Coralline unifies synchronous in-memory state, asynchronous I/O streams, and multi-threaded background Isolates into a single deterministic DAG evaluation engine:
+Coralline represents synchronous values and async results in a pipeline. It does not create or manage Dart isolates; an application can supply results from its own background work through a controller:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                         Coralline Heterogeneous Source Binding Spectrum                        │
 ├────────────────────────────────┬───────────────────────────────┬───────────────────────────────┤
-│ Synchronous In-Memory Binding  │ Asynchronous I/O Binding      │ Parallel Isolate Worker       │
+│ Synchronous In-Memory Binding  │ Asynchronous I/O Binding      │ Application-managed work      │
 ├────────────────────────────────┼───────────────────────────────┼───────────────────────────────┤
 │ • In-memory variables          │ • HTTP REST API & WebSockets  │ • Heavy CPU computation       │
 │ • Immediate `Valid` snapshot   │ • 3-stage snapshot lifecycle  │ • Port messaging (Send/Receive)│
-│ • Zero evaluation latency      │ • Eliminates null ambiguity   │ • Jank-free 60/120fps UI      │
+│ • Read synchronously           │ • Snapshot for async states   │ • Feed results through source  │
 └────────────────────────────────┴───────────────────────────────┴───────────────────────────────┘
 ```
 
-- **Off-Thread Isolate Concurrency**: Heavy JSON parsing, ML inference, or cryptography runs on isolated Dart memory heaps. When results post via `SendPort`, the main thread's `ReceivePort` transitions the node snapshot to `Valid` and emits a single `onDirty` ping.
+- **Off-thread work**: If an application runs CPU-heavy work in an isolate, it can pass the result back to its Coralline source. Isolate creation and messaging are application responsibilities.
 - **Fail-Fast Interception**: At convergence nodes (`Trunk.combine()`, `Trunk.converge()`), if any single inbound source (whether sync, async, or isolate) encounters an exception, processing halts immediately and forwards `CoralSnapshot.damaged(error)` downstream.
 

@@ -14,7 +14,7 @@ abstract interface class _IntentFirewall {}
 /// Encapsulates the inbound stream for a broadcaster while implementing [_IntentFirewall]
 /// to prevent topological intents from propagating across the multiplexing boundary.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Intentionally blocks intent propagation so individual outbound subscriber lines
 /// manage their own topological intent boundaries.
 final class _BroadcasterTerminal<T> extends CoralTerminal<T> implements _IntentFirewall {
@@ -30,7 +30,7 @@ final class _BroadcasterTerminal<T> extends CoralTerminal<T> implements _IntentF
 /// Decouples a single reactive stream into dynamic line sub-nodes while memoizing snapshots
 /// (`_lastSnapshot`) to avoid redundant pull computations across multiple subscribers.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - Outbound lines must be created via [coral].
 /// - Accessing unattached or dormant line nodes will throw [CoralBroadcasterLineDormantAccessError].
 /// - `_rotate` handles Copy-on-Write (`_intoRotate`) mutations to ensure safe iteration during dirty propagation.
@@ -141,7 +141,7 @@ base class _CoralBroadcasterBase<T> implements CoralBroadcaster<T> {
 /// Minimizes resource retention by deactivating the upstream terminal stream as soon as
 /// the subscriber count drops to zero (`_outbounds.isEmpty`).
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Useful when upstream computations or subscriptions should not linger once UI subscribers unmount.
 final class _ImmediateDeactivationCoralBroadcaster<T> extends _CoralBroadcasterBase<T> {
   _ImmediateDeactivationCoralBroadcaster(super.inbound);
@@ -175,7 +175,7 @@ final class _ImmediateDeactivationCoralBroadcaster<T> extends _CoralBroadcasterB
 /// Avoids churn and thrashing when subscriber lines rapidly detach and re-attach (such as during
 /// widget subtree updates or list recycling) by scheduling lazy deactivation via the global scheduler.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// If a new subscriber attaches before the scheduled deactivation task runs, the deactivation is canceled,
 /// maintaining an active upstream connection.
 final class _LazyDeactivationCoralBroadcaster<T> extends _CoralBroadcasterBase<T> {
@@ -213,7 +213,7 @@ final class _LazyDeactivationCoralBroadcaster<T> extends _CoralBroadcasterBase<T
 /// Provides dynamic 1:N fan-out capability without requiring dedicated full terminal nodes for
 /// every subscriber branch, optimizing memory allocation and topological node count.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - **Dormant Access Error:** Invoking `snapshot` or `_pull()` on an unattached or dormant line
 ///   (when `isRunning == false`) will throw [CoralBroadcasterLineDormantAccessError].
 /// - Always store or cache the line node returned by `broadcaster.coral` before calling `manifest()`.

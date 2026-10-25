@@ -10,10 +10,9 @@ part of '../../../widgets.dart';
 /// [SimplexBuildComponent] binds directly to a single upstream [CoralNode] returned by [manifest].
 ///
 /// **Design Philosophy:**
-/// Eliminates list allocations (`List.unmodifiable`) and iteration overhead for single-stream
-/// UI components (such as badges, toggles, or dynamic labels).
+/// Represents the single dependency directly rather than collecting dependencies in an iterable.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - Implement [build] instead of overriding [compute]. The [compute] method is marked `@nonVirtual`
 ///   and forwards directly to [build].
 /// - Use [SimplexBuildComponent] whenever a UI component reads from exactly one [Coral] or [CoralNode].
@@ -51,9 +50,9 @@ abstract base class SimplexBuildComponent extends SimplexComputation<Widget> {
   /// * Must be annotated with `@manifestSync`.
   ///
   /// **Ensures:**
-  /// * Establishes a direct, zero-allocation reactive link to the declared upstream node.
+  /// * Declares the upstream node observed by this component.
   ///
-  /// **AI & Developer Note:**
+  /// **Implementation note:**
   /// Always return the exact single reactive dependency used in [build]. Returning a different node
   /// or instantiating new nodes inside [manifest] will cause topological binding errors or lost updates.
   @override
@@ -80,13 +79,13 @@ abstract base class SimplexBuildComponent extends SimplexComputation<Widget> {
 /// Coralline's topological pipeline rather than a Flutter [Widget]. It computes the UI subtree lazily
 /// when marked dirty by its reactive dependencies.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - Implement [build] instead of overriding [compute]. The [compute] method is marked `@nonVirtual`
 ///   and forwards directly to [build].
 /// - Do not store dynamic UI state in local mutable fields. Always derive UI declaratively from reactive
 ///   [Coral] streams to maintain topological purity and prevent state synchronization bugs.
 /// - Ensure all reactive dependencies accessed within [build] are declared in [manifest].
-/// - For single-dependency (1:1) UI components, consider using [SimplexBuildComponent] for zero-allocation performance.
+/// - For a component with one dependency, consider [SimplexBuildComponent], which represents that dependency directly.
 ///
 /// **Example:**
 /// ```dart
@@ -123,7 +122,7 @@ abstract base class BuildComponent extends ComplexComputation<Widget> {
   /// * Establishes topological reactive links to all declared upstream nodes, ensuring
   ///   this component is re-computed lazily whenever any declared node emits dirty signals.
   ///
-  /// **AI & Developer Note:**
+  /// **Implementation note:**
   /// Every [Coral] or [CoralNode] accessed within [build] MUST be included in the returned iterable.
   /// Accessing an undeclared [CoralNode] inside [build] violates topological security and will fail
   /// to trigger automatic UI updates when that dependency changes.
@@ -150,7 +149,7 @@ abstract base class BuildComponent extends ComplexComputation<Widget> {
 /// Coralline. It wraps the reactive stream into a single [ComponentElement] ([CoralWidgetElement]),
 /// performing lazy pull computations of the UI tree only when marked dirty.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - Do not pass dynamic or constantly changing [coral] references to the same [CoralWidget]
 ///   instance, as it may force unnecessary coupler hot-swapping.
 /// - Use the `.toWidget()` extension methods on [Coral], [CoralProvider], or [ComplexComputation<Widget>]
@@ -185,11 +184,11 @@ class CoralWidget extends Widget {
 ///
 /// **Design Philosophy:**
 /// Maintains a [CoralTerminal] to drive the reactive pipeline. When dependencies change
-/// (via [didChangeDependencies]), it suppresses the standard Flutter rebuild and forwards the
-/// change into the reactive [contextProvider]. Rebuild is only scheduled if the terminal's
+/// (via [ComponentElement.didChangeDependencies]), it suppresses the standard Flutter rebuild and forwards the
+/// change into the reactive context provider. Rebuild is only scheduled if the terminal's
 /// final computed UI widget actually changes, avoiding redundant layout and render passes.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - Never call `markNeedsBuild` directly unless you bypass the terminal's dirty propagation.
 /// - Ensure [unmount] cleanly deactivates the terminal to prevent subscription/memory leaks.
 base class CoralWidgetElement extends ComponentElement {
@@ -381,7 +380,7 @@ base class CoralWidgetTerminalIntent extends CorallineTerminalIntent {
 /// Computation remains decoupled from Flutter's widget lifecycle while still maintaining complete
 /// reactivity to dynamic UI changes (e.g., theme adjustments, screen resizing).
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - **Do not cache the BuildContext:** Never save or store the emitted [BuildContext] inside
 ///   local fields. Only map or derive values reactively using [context]'s coral.
 /// - **Deadlock Warning:** Ensure the Computation is mounted via a [CoralWidget] (using
@@ -390,7 +389,7 @@ base class CoralWidgetTerminalIntent extends CorallineTerminalIntent {
 ///
 /// **Example:**
 /// ```dart
-/// class MyComponent extends CoralComponent with CorallineBuildContextAware {
+/// base class MyComponent extends BuildComponent with CorallineBuildContextAware {
 ///   late final themeCoral = context.map((ctx) => Theme.of(ctx));
 ///
 ///   @override
@@ -418,17 +417,17 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   /// Every access to [context] invokes `_contextProvider.coral`, creating a
   /// **new distinct broadcaster line node instance**.
   ///
-  /// **AI & Developer Note (Broadcaster Line Warning):**
+  /// **Implementation note (Broadcaster Line Warning):**
   /// - Reading [context] repeatedly or inside `compute()` without caching
   ///   creates separate unattached or dormant line instances.
   /// - Pulling data from an unattached line node will fail with a state error
   ///   ([CoralBroadcasterLineDormantAccessError]).
   /// - **Best Practice:** Always cache derived nodes in `late final` fields or
-  ///   store the [context] instance before registering it in [manifest].
+  ///   store the [context] instance before registering it in [ComplexComputation.manifest].
   ///
   /// **Example:**
   /// ```dart
-  /// class MyComponent extends CoralComponent with CorallineBuildContextAware {
+  /// base class MyComponent extends BuildComponent with CorallineBuildContextAware {
   ///   // Correct: Cache the derived line node as a late final field.
   ///   late final themeCoral = context.map((ctx) => Theme.of(ctx));
   ///
@@ -491,7 +490,7 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   /// **Ensures:**
   /// * Invoked only when `!identical(oldContext, newContext)` at the element reference level.
   ///
-  /// **AI & Developer Note:**
+  /// **Implementation note:**
   /// - **No Direct Framework Rebuilds:** Calling `newContext?.dependOnInheritedWidgetOfExactType<T>()`
   ///   inside this hook will **NOT** automatically trigger an immediate widget rebuild.
   ///   [CoralWidgetElement] delegates computation to Coralline's lazy topological pipeline and
@@ -524,7 +523,7 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   /// * An ancestor [InheritedWidget] of type [T] must exist in the element tree when the pipeline is evaluated.
   ///
   /// **Ensures:**
-  /// * Automatically triggers [didChangeDependencies] and re-computes the pipeline whenever [T] (or [aspect]) updates.
+  /// * Automatically triggers [ComponentElement.didChangeDependencies] and re-computes the pipeline whenever [T] (or [aspect]) updates.
   /// * Returns a non-null reactive [Coral<T>] pipeline emitting instances of [T].
   ///
   /// **Throws:**
@@ -549,7 +548,7 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   /// * [aspect]: Optional aspect identifier for fine-grained dependency tracking when [T] is an [InheritedModel].
   ///
   /// **Ensures:**
-  /// * Automatically triggers [didChangeDependencies] and re-computes the pipeline whenever [T] (or [aspect]) updates.
+  /// * Automatically triggers [ComponentElement.didChangeDependencies] and re-computes the pipeline whenever [T] (or [aspect]) updates.
   /// * Returns a reactive [Coral<T?>] pipeline emitting [T] or `null` if [T] is absent from the tree.
   ///
   /// **Example:**
@@ -572,7 +571,7 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   /// and flattens its underlying pipeline into a unified reactive stream.
   ///
   /// **Key Architectural Advantages of `coralOf<T>()`:**
-  /// 1. **Lazy Computation (Push-Dirty, Pull-Data)**: Eliminates UI frame drops (jank) by delaying computations strictly until frame render time.
+  /// 1. **Lazy Computation (Push-Dirty, Pull-Data)**: Derived values are read through the pipeline when requested by the consumer.
   /// 2. **Context Decoupling via Intent Architecture**: Accesses ancestor state within business class fields without storing or leaking `BuildContext` references.
   /// 3. **Cascade Stream Flattening (2-Axis Unwrapping)**: Internally evaluates as:
   ///    `dependOn<InheritedCoralProviderWidget<T>>().cascade((data) => data.provider.coral)`
@@ -639,9 +638,9 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
 /// When [providerCoral] emits a new [CoralProvider], this component rebuilds the [InheritedCoralProviderWidget]
 /// so that descendant computations reactively receive the updated provider.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - **Do Not Mutate `providerCoral` Directly:** Ensure [providerCoral] is registered in [manifest]
-///   (automatically handled by [SimplexBuildComponent]) to guarantee reactive updates.
+///   (automatically handled by [SimplexBuildComponent]) so changes to that dependency can be observed.
 ///
 /// **Example:**
 /// ```dart
@@ -681,10 +680,9 @@ base class InheritedCoralProvider<T> extends SimplexBuildComponent {
 ///    `dependOnInheritedWidgetOfExactType` element tree lookup mechanics.
 /// 3. **Automatic Reactive Unwrapping**: Downstream components consume state via `coralOf<T>()`,
 ///    which flattens tree updates and inner [Coral] state changes into a unified stream.
-/// 4. **Push-Dirty, Pull-Data Scheduling**: Aligns data propagation with Flutter's frame pipeline,
-///    preventing unnecessary widget rebuilds and eliminating UI jank.
-/// 5. **Lifecycle & Memory Safety**: Safely handles hot-swapping and element unmounting without
-///    stale context leaks or memory leaks.
+/// 4. **Push-Dirty, Pull-Data**: Separates pipeline invalidation from reading derived values.
+///    Flutter still determines when widget builds are scheduled.
+/// 5. **Element Lifecycle**: Uses Flutter's inherited dependency mechanism to track dependent elements.
 ///
 /// **System Architectural Flow:**
 /// ```
@@ -703,20 +701,18 @@ base class InheritedCoralProvider<T> extends SimplexBuildComponent {
 /// **Architectural Rationale: Why Inherit [InheritedWidget] & Suppress Rebuilds?**
 /// `InheritedCoralProviderWidget` directly extends Flutter's native [InheritedWidget] for 4 core reasons:
 /// 1. **$O(1)$ Engine-Level Lookup Performance**: Leverages Flutter engine's internal `_inheritedElements`
-///    HashMap via `dependOnInheritedWidgetOfExactType` for instant $O(1)$ ancestor lookups.
-/// 2. **Zero-Leak Element Lifecycle Safety**: Automatically tracks and cleans up child element dependencies
-///    (`removeDependent`) when widgets unmount, eliminating ghost memory leaks common in global service locators.
+///    HashMap via `dependOnInheritedWidgetOfExactType` to look up ancestor providers.
+/// 2. **Element Lifecycle**: Flutter tracks and updates child element dependencies as widgets mount and unmount.
 /// 3. **Seamless Ecosystem Compatibility**: Effortlessly bridges native Flutter UI context providers (`Theme`, `MediaQuery`)
 ///    into pure reactive [Coral] nodes via [CorallineBuildContextAware].
-/// 4. **Rebuild Suppression Mechanics**: In [updateShouldNotify], it compares only `oldWidget.provider != provider`.
-///    When inner data mutates, `updateShouldNotify` returns `false`, **suppressing Flutter's inefficient forced-rebuild
-///    notification pipeline** and delegating all updates to Coralline's lazy push-dirty pull-data pipeline.
+/// 4. **Provider Updates**: [updateShouldNotify] compares provider references. Changes inside a provider's
+///    reactive value are observed through the Coralline pipeline.
 ///
 /// **Generic Type Selection Best Practices (Avoiding Type Shadowing):**
 /// * **Use Strongly-Typed Domain Models:** `T` should be a unique domain model, store,
 ///   or state class (e.g., `UserStore`, `CartState`, `ThemeConfig`). Because Flutter looks up
 ///   [InheritedWidget] dependencies strictly by exact runtime type, using strongly-typed models
-///   guarantees unambiguous element tree resolution.
+///   helps distinguish provider types during element tree lookup.
 /// * **Avoid Primitive Types (`int`, `String`, `bool`):** Do not use primitive or generic collection
 ///   types for `T`. If multiple primitive providers (e.g., `InheritedCoralProviderWidget<String>`)
 ///   exist in the ancestor tree, the lower provider will shadow the upper provider, causing
@@ -745,7 +741,7 @@ base class InheritedCoralProvider<T> extends SimplexBuildComponent {
 ///   Downstream components consume the state via `coralOf<T>()` with identical syntax, preserving complete
 ///   API uniformity if the data becomes dynamic in the future.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - **Convenience Extension:** Prefer using `provider.toInheritedWidget(child: ...)`
 ///   extension method for cleaner, fluid syntax.
 ///
@@ -784,7 +780,7 @@ extension CoralComputationWidgetExtension<T extends CoralComputation<Widget>>
   /// **Ensures:**
   /// * Returns a new [CoralWidget] containing this Computation's [coral] pipeline.
   ///
-  /// **AI & Developer Note (App-Wide Fallback Pattern):**
+  /// **Implementation note (App-Wide Fallback Pattern):**
   /// Create a project-specific extension (e.g. `toAppWidget()`) wrapping [toWidget] to encapsulate
   /// your design system's default error UI and global error logging (e.g., Sentry, Firebase)
   /// centrally across your application.
@@ -936,9 +932,9 @@ extension CoralProviderInheritedWidgetExtension<T> on CoralProvider<T> {
   ///   final userStoreProvider = CoralProvider<UserStore>(...);
   ///   final appWidget = userStoreProvider.toInheritedWidget(child: const MyApp());
   ///   ```
-  /// * **Prop-less Downstream Consumption**: Descendant computations consume the state reactively via [coralOf] without prop-drilling:
+  /// * **Prop-less Downstream Consumption**: Descendant computations consume the state reactively via [CorallineBuildContextAware.coralOf] without prop-drilling:
   ///   ```dart
-  ///   class ProfileDisplay extends ComplexComputation<Widget> with CorallineBuildContextAware {
+  ///   base class ProfileDisplay extends BuildComponent with CorallineBuildContextAware {
   ///     late final userStoreCoral = coralOf<UserStore>();
   ///   }
   ///   ```

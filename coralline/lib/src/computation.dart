@@ -16,7 +16,7 @@ part of '../coralline.dart';
 /// immediately when upstream nodes change, they register as 'dirty' and defer calculation
 /// until a downstream consumer explicitly requests data via [coral].
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// [CoralComputation] is a sealed class and cannot be extended or implemented outside
 /// this library. Always inherit from either [SimplexComputation] (for 1:1 single inbound)
 /// or [ComplexComputation] (for N:1 multi inbound).
@@ -82,26 +82,25 @@ sealed class CoralComputation<T> implements CoralProvider<T> {
   ///
   /// **Requires:**
   /// * Must be a pure and synchronous calculation without side-effects.
-  /// * Every node accessed inside [compute] MUST be declared in [manifest].
+  /// * Every node accessed inside [compute] MUST be declared in its manifest method (see [SimplexComputation.manifest] or [ComplexComputation.manifest]).
   T compute();
 }
 
-/// A high-performance custom node computation optimized for a single inbound dependency (1:1).
+/// A custom node computation with a single inbound dependency (1:1).
 ///
 /// Unlike [ComplexComputation] which manages an N:1 list of inbound dependencies,
 /// [SimplexComputation] binds directly to a single upstream [CoralNode] returned by [manifest].
 ///
 /// **Design Philosophy:**
 /// Single-input transformation nodes (such as `map`, `where`, or `distinct`) constitute
-/// the majority of reactive graph nodes. [SimplexComputation] eliminates array allocations
-/// and loop overhead by storing a direct field reference to its single inbound node.
+/// the majority of reactive graph nodes. [SimplexComputation] stores a direct field reference
+/// to its inbound node rather than representing the dependency as a collection.
 ///
-/// **Extreme Performance Optimization:**
-/// * **Zero Extra Heap Allocation**: Avoids allocating `List.unmodifiable` containers.
-/// * **Direct Field Reference**: Accesses `_inbound` directly without array index lookups.
-/// * **Hot-Path Inlining**: Enables Dart VM method inlining on graph activation loops.
+/// **Implementation details:**
+/// * The inbound dependency is stored directly in `_inbound`.
+/// * Methods marked with `@pragma('vm:prefer-inline')` provide an inlining hint to supported Dart runtimes.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Use [SimplexComputation] whenever a computation has exactly one upstream source.
 /// If your node requires multiple dependencies or dynamic manifest lists, use [ComplexComputation].
 ///
@@ -159,7 +158,7 @@ abstract base class SimplexComputation<T> extends CoralComputation<T> {
 /// * **Pull-Data & Lazy Computation (Reverse Traversal)**: When a downstream terminal
 ///   requests data, [compute] is invoked once per computation cycle, caching the result.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// * **Pure Function Constraint**: The [compute] method MUST be pure and synchronous.
 ///   Do not perform side-effects (e.g., UI updates, network calls) inside [compute].
 /// * **Manifest Alignment**: Every node accessed inside [compute] MUST be returned in [manifest].
@@ -213,7 +212,7 @@ abstract base class ComplexComputation<T> extends CoralComputation<T> {
 /// This mixin propagates lifecycle state *in reverse* from downstream consumers, ensuring heavy
 /// resources are active only when actively needed by the UI.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// * **Synchronous Teardown**: [didDeactivate] MUST cleanly and synchronously release any
 ///   resources allocated during [didActivate].
 /// * **Broadcaster Ref-Counting**: When routed through a `CoralBroadcaster` (1:N split),
@@ -272,7 +271,7 @@ base mixin CorallineLifecycleAware {
 /// from downstream terminals up to this computation. This enables adaptive behavior (e.g., frame
 /// dropping when minimized, density-aware image loading) without violating declarative flow rules.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// * **Broadcaster Firewall Constraint**: Computations mixing in [CorallineTerminalIntentAware]
 ///   MUST be positioned downstream of any `CoralBroadcaster`. Broadcasters act as intent firewalls
 ///   and block intent propagation upstream to prevent 1:N parameter collisions.
@@ -315,17 +314,19 @@ base mixin CorallineTerminalIntentAware {
 
 /// Annotation marking `manifest()` methods that require strict dependency synchronization.
 ///
-/// **Design Philosophy:**
 /// Ensures static analysis and developer tooling can verify that every node read inside
-/// [compute] is declared in [manifest].
+/// [ComplexComputation.compute] is declared in [ComplexComputation.manifest].
 ///
-/// **AI & Developer Note:**
-/// * **Verification Checklist**:
-///   1. Every node accessed in `compute()` must be declared in `manifest()`.
-///   2. Do not return unused nodes in `manifest()`.
-///   3. Use list literals `=> [...]` instead of `sync*` / `yield`.
-const manifestSync = _ManifestSync();
+/// **Verification Checklist**:
+/// 1. Every node accessed in `compute()` must be declared in `manifest()`.
+/// 2. Do not return unused nodes in `manifest()`.
+/// 3. Use list literals `=> [...]` instead of `sync*` / `yield`.
+const manifestSync = ManifestSync();
 
-class _ManifestSync {
-  const _ManifestSync();
+/// Implementation class for the [manifestSync] annotation.
+@Target({TargetKind.method})
+class ManifestSync {
+  /// Const constructor for [manifestSync].
+  const ManifestSync();
 }
+

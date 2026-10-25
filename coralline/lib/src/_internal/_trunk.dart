@@ -228,9 +228,9 @@ abstract base class _DynamicTrunk<T> extends _TrunklineNode<Coral<T>>
       _snapshot = TrunkSnapshot.damaged(error, stackTrace);
     }
 
-    // / 🚨 Architecture Note: Separation of Concerns 🚨
-    // /
-    // / DO NOT move this loop inside the `try-catch` block above.
+    // Architecture Note: Separation of Concerns
+    //
+    // DO NOT move this loop inside the `try-catch` block above.
     // /
     // / 1. **Final State Execution**: The `try-catch` strictly handles Topology Mutation.
     // /    This loop must execute based on the finalized `_snapshot` state,

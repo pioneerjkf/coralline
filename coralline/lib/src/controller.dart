@@ -33,28 +33,28 @@ part of '../coralline.dart';
 ///
 /// #### The 4-Phase Flow:
 ///
-/// **[Phase 1] Imperative Injection (Source)**
+/// **Phase 1: Imperative Injection (Source)**
 /// - Action: `controller.set(data)` is called.
 /// - Result: Data is encapsulated into an immutable [CoralSnapshot] and cached at the root node.
 ///
-/// **[Phase 2] Push-Dirty (Downstream Propagation)**
+/// **Phase 2: Push-Dirty (Downstream Propagation)**
 /// - Action: The root node broadcasts a lightweight "Dirty" flag down the topological graph.
 /// - Result: Downstream nodes are marked as dirty, but **NO DATA IS PUSHED**.
 ///
-/// **[Phase 3] Terminal Notification (Destination)**
+/// **Phase 3: Terminal Notification (Destination)**
 /// - Action: The "Dirty" flag hits the [CoralTerminal] (e.g., a Flutter UI Widget).
 /// - Result: The terminal triggers its `onDirty` callback (e.g., `setState()`), queuing a UI re-render.
 ///
-/// **[Phase 4] Pull-Data & Lazy Computation (Upstream Traversal)**
+/// **Phase 4: Pull-Data & Lazy Computation (Upstream Traversal)**
 /// - Action: During the UI render cycle, the terminal explicitly requests `.data`.
 /// - Result: The terminal pulls data from its parent, triggering a reverse traversal
 ///   UP the graph. Only now are intermediate transformations (`map`, `derive`, `aggregate`)
 ///   executed. The results are cached at each node, and the computed data is handed to UI.
 ///
 /// #### Why this matters?
-/// This design guarantees that no matter how complex the pipeline transformations are, they are
-/// executed **only once per UI render cycle** and only when strictly necessary, preventing
-/// computational flooding and guaranteeing optimal performance.
+/// Dirty transformations are evaluated when a consumer reads their values and may be cached until
+/// an upstream change invalidates them. This can avoid work for values that are never read after
+/// an update. It does not guarantee one evaluation per frame or a particular performance result.
 ///
 /// **Example:**
 /// ```dart
@@ -72,7 +72,7 @@ part of '../coralline.dart';
 /// final Coral<int> pipeline = controller.coral;
 /// ```
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// - **Distinct by Default**: By default, `distinct` is `true`. Injecting the exact same state
 ///   consecutively will NOT trigger a pipeline propagation. To force propagation on
 ///   identical data, you must explicitly set `distinct: false`.

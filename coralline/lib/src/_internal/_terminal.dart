@@ -61,7 +61,7 @@ abstract base class _TerminalPoint<C extends CoralNode> extends _CorallineLifecy
           // If the handler fails, log in debug mode without re-throwing assertion cascade.
           assert(() {
             print(
-              '\n🚨 [Coralline] terminalIntent.handleUncaughtError failed!\n'
+              '\n[Coralline:Error] terminalIntent.handleUncaughtError failed!\n'
               'Handler Error: $handlerError\n'
               'Handler StackTrace:\n$handlerStack\n',
             );
@@ -79,7 +79,7 @@ abstract base class _TerminalPoint<C extends CoralNode> extends _CorallineLifecy
       // We log it in debug mode without cascading assertions.
       assert(() {
         print(
-          '\n🚨 [Coralline] Fatal error inside _handleUncaughtError!\n'
+          '\n[Coralline:Error] Fatal error inside _handleUncaughtError!\n'
           'Zone Error: $fatalError\n'
           'Zone StackTrace:\n$fatalStack\n',
         );

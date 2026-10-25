@@ -4,13 +4,14 @@
 
 part of '../coralline.dart';
 
-/// Extension to provide zero-overhead debugging capabilities to CoralNode objects.
+/// Extension for attaching debug labels and creation locations to CoralNode objects.
 ///
 /// **Design Philosophy (Zero-Overhead & External State):**
 /// Debugging complex topological graphs can be challenging. This extension allows developers
 /// to tag nodes and capture their creation stack traces to hunt down memory leaks or trace
-/// data pipelines. Crucially, it guarantees absolutely zero memory overhead in Release builds
-/// by storing debug state externally using an [Expando] and wrapping the capture logic in `assert`.
+/// data pipelines. Debug metadata is stored externally using an [Expando], and capture is guarded
+/// by `assert`, so metadata is not recorded when assertions are disabled. Calling the extension
+/// still has the normal method-call cost in that mode.
 extension CorallineDebugExtension on CoralNode {
   /// (Debug Only) A developer-defined tag to identify this specific object.
   String? get debugTag => _debugTags[this];
@@ -27,7 +28,7 @@ extension CorallineDebugExtension on CoralNode {
   ///
   /// **Ensures:**
   /// * In debug mode, the node is tagged and its creation stack trace is captured and stored externally.
-  /// * In release mode, does absolutely nothing (zero overhead).
+  /// * When assertions are disabled, the capture closure does not run and metadata is not stored.
   ///
   /// **Example:**
   /// ```dart

@@ -1,6 +1,6 @@
-# 🔀 Pipeline Composition & Broadcasting Guide
+# Pipeline Composition & Broadcasting Guide
 
-Coralline enforces a strict **1:1 pipeline connection** by default to guarantee zero-overhead performance. However, real-world apps often require sharing a single data source across multiple UI widgets or swapping data pipelines dynamically at runtime.
+Many Coralline pipeline nodes have a single downstream owner. Use a broadcaster when multiple branches need to observe a source, and a coupler or dynamic operator when the upstream source must change. These APIs manage graph connections; this document does not claim zero runtime overhead.
 
 This guide explains **1:N Broadcasting**, **Dynamic Topology Swapping (`CoralCoupler`)**, and **Snapshot Error Defense**.
 
@@ -8,12 +8,12 @@ This guide explains **1:N Broadcasting**, **Dynamic Topology Swapping (`CoralCou
 
 ### 1. 1:1 Pipeline vs 1:N Broadcasting
 
-#### Why 1:1 by Default?
-To eliminate complex runtime object tracking, Coralline links default `Coral` nodes in a strict 1:1 pipeline. If a second `Terminal` attempts to subscribe to a 1:1 node, Coralline immediately throws a `CoralNodeReleaseViolationException`.
+#### Single downstream ownership
+Many `Coral` nodes are connected to one downstream owner. Trying to attach a node that is already owned by another branch can raise a `CoralNodeReleaseViolationException`. This ownership rule is part of the graph model; it is not a general performance guarantee.
 
 #### 1:N Pipeline Sharing with `CoralBroadcaster`
 
-When a single source must be shared by multiple consumers, use `broadcast()` or `CoralBroadcaster`.
+When a single source must be shared by multiple consumers, use `toBroadcaster()` or `CoralBroadcaster`.
 
 ```mermaid
 graph TD
@@ -50,10 +50,10 @@ void main() {
 1. **1st Subscriber Added**: Activates upstream resources and starts computing.
 2. **Subscribers Hit 0**: Gracefully deactivates upstream resources.
 
-#### 💡 Microtask Lazy Deactivation (`lazyDeactivation = true`)
+#### Microtask Lazy Deactivation (`lazyDeactivation = true`)
 During Flutter Hot Reloads or route transitions, widgets are unmounted and remounted rapidly. Deactivating resources immediately causes UI flickering and redundant re-initialization costs.
 
-Coralline defers deactivation to the end of the microtask queue. If a new widget subscribes within the same frame, the upstream pipeline stays alive, guaranteeing **zero-flicker UI updates**.
+Coralline can defer deactivation to a microtask. If a new branch is attached before the deferred check, the upstream pipeline can remain active. This may avoid unnecessary stop-start work; it does not guarantee flicker-free UI updates.
 
 <br><br>
 
@@ -119,18 +119,18 @@ Coralline packages all pipeline data in an immutable `CoralSnapshot<T>` struct:
 
 ### 5. Heterogeneous Mixed Source Synchronization & Merger Matrix
 
-When synchronous in-memory, asynchronous I/O, and parallel Isolate sources converge at a `Trunk.combine()` or `Trunk.converge()` node, the standard evaluation model applies:
+Synchronous values and values supplied by async conversions can be combined through `Trunk.combine()` or `Trunk.converge()`. Coralline does not manage isolate workers; an application can supply results from its own background work as another source.
 
-| Source A (Sync) | Source B (Async I/O) | Source C (Parallel Isolate) | Standard Combination (`combine`) | Downstream Snapshot |
+| Source A (Sync) | Source B (Async I/O) | Source C (Application-managed work) | Standard Combination (`combine`) | Downstream Snapshot |
 | :--- | :--- | :--- | :--- | :--- |
 | **Valid** | **Empty** (Pending) | **Empty** (Processing) | Execution Suspended | **`CoralSnapshot.empty()`** |
 | **Valid** | **Valid** | **Empty** (Processing) | Execution Suspended | **`CoralSnapshot.empty()`** |
 | **Valid** | **Valid** | **Valid** | Composite Evaluation | **`CoralSnapshot.data(Payload)`** |
 | **Valid** | **Damaged** | **Valid** | Fail-Fast Interception | **`CoralSnapshot.damaged(Error B)`** |
 
-#### 💡 Developer Freedom in Custom Aggregation (`aggregate`)
+#### Developer Freedom in Custom Aggregation (`aggregate`)
 - **Standard Bundling (`combine()`)**: Bundles data into `List<S>` when all participating lines resolve to `Valid`, following unified readiness and fail-fast interception rules.
-- **Custom Aggregation (`aggregate` / `converge`)**: Passes raw node references (`Iterable<Coral<S>> lines`) directly to the developer's callback, granting **100% evaluation freedom**:
+- **Custom Aggregation (`aggregate` / `converge`)**: Passes node references (`Iterable<Coral<S>> lines`) to the callback, allowing application-specific handling:
   - `lines.areAllValid()`: Compute only when every line is valid.
   - `lines.where((l) => l.isValid)`: Perform **Partial Aggregation** over currently valid lines while ignoring loading lines.
   - `line.dataOrNull`: Provide custom fallback values for uninitialized async lines.
@@ -139,7 +139,7 @@ When synchronous in-memory, asynchronous I/O, and parallel Isolate sources conve
 
 ### 6. Terminal Best Practices & Design Guidelines
 
-#### ✅ Best Practices
+#### Best Practices
 1. **State-Guarded Extraction**: Interrogate `snap.isEmpty` and `snap.isDamaged` before accessing `.data`.
 2. **Encapsulated Guard Pattern (`Coral.guard`)**: Protect lazy composite nodes by wrapping exposed coral getters:
    ```dart

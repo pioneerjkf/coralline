@@ -1,4 +1,6 @@
 analyzer:
+  errors:
+    comment_references: error
   exclude:
     - build/**
     - android/**

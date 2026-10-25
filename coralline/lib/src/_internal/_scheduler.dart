@@ -17,7 +17,7 @@ part of '../../coralline.dart';
 /// scheduling calls and executing all pending mixin tasks sequentially when
 /// the scheduled microtask fires.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Subclasses or mixins overriding [_onTask] MUST invoke `super._onTask()` at
 /// the very beginning of their implementation to maintain the proper mixin
 /// linearization execution chain and reset [_isScheduled].
@@ -62,7 +62,7 @@ abstract base class _CorallineSchedulerBase {
 /// computation passes, preventing re-entrancy bugs and race conditions during
 /// dynamic node detachment.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Do not clear or mutate [_mooringSet] directly outside [_onTask]. The internal
 /// set-swapping mechanism creates an O(1) snapshot to safely allow new items
 /// to be registered while processing the current batch.
@@ -142,7 +142,7 @@ base mixin _MooringSchedulerMixin on _CorallineSchedulerBase {
 /// downstream reactive points are notified exactly once per microtask frame
 /// regardless of the number of upstream signal changes.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Always verify `point._isDirtyPending` inside execution loops. If a point is
 /// marked non-dirty before the flush occurs, notification is skipped.
 base mixin _LazyDirtyPushSchedulerMixin on _CorallineSchedulerBase {
@@ -209,7 +209,7 @@ base mixin _LazyDirtyPushSchedulerMixin on _CorallineSchedulerBase {
 /// Prevents premature stream/resource tear-down during rapid subscriber churn,
 /// ensuring broadcasters remain active if re-subscribed within the same turn.
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Broadcasters are only deactivated if `isActivated` is `true` AND `_outbounds`
 /// is empty at the time of microtask execution.
 base mixin _BroadcasterDeactivateSchedulerMixin on _CorallineSchedulerBase {
@@ -277,7 +277,7 @@ base mixin _BroadcasterDeactivateSchedulerMixin on _CorallineSchedulerBase {
 /// 2. Lazy dirty notification push ([_LazyDirtyPushSchedulerMixin])
 /// 3. Broadcaster lazy deactivation ([_BroadcasterDeactivateSchedulerMixin])
 ///
-/// **AI & Developer Note:**
+/// **Implementation note:**
 /// Do not instantiate directly. Use the global singleton [instance] to schedule
 /// microtask operations across the framework.
 ///

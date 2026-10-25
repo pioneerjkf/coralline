@@ -1,10 +1,10 @@
-# 🚀 Coralline Quickstart & Core Concepts Guide
+# Coralline Quickstart & Core Concepts Guide
 
 > **"Don't write boilerplates. To handle complex pipelines, all you have to do is call a line."**
 
-Coralline is an elegant Dart/Flutter library designed to compose complex reactive pipelines and state management in a single line (**Call a line**) without computational overhead or boilerplate code.
+Coralline is a Dart library for composing reactive pipelines and derived state. Its operators can keep common transformations concise; larger graphs still require choosing and managing their sources and dependencies.
 
-This guide introduces app developers to Coralline's 3 core entities and the **Push-Dirty, Pull-Data** paradigm in 5 minutes.
+This guide introduces Coralline's three core entities and the **Push-Dirty, Pull-Data** evaluation model.
 
 <br><br>
 
@@ -30,34 +30,34 @@ graph LR
 
 #### 3) `CoralTerminal<T>` (Destination / UI Binding)
 - Positioned at the bottom (Terminal) of the pipeline to display or gather data.
-- **Parameterless `void Function() onDirty`**: Parameterless callback strictly separates **Signaling** (alerting the UI to schedule a rebuild) from **Data Extraction** (pulling snapshot data during the build tick). This prevents main-thread frame thrashing when background tasks emit high-frequency updates.
+- **Parameterless `void Function() onDirty`**: The callback notifies the consumer that the pipeline changed. A consumer can schedule a rebuild and read the value separately. How updates are batched depends on the consumer; the callback alone does not guarantee frame coalescing.
 - **Mandatory Teardown (`terminal.deactivate()`)**: Always deactivate terminals inside `dispose()` or cleanup handlers to unbind upstream observers and prevent memory leaks.
 
 <br><br>
 
 ### 2. Core Paradigm: Push-Dirty, Pull-Data & Source Bindings
 
-Traditional reactive systems (Streams, Event-driven BLoCs) perform transformations eagerly whenever state changes. This wastes CPU cycles on invisible UI elements or intermediate calculations.
+Some reactive pipelines evaluate transformations as events or state changes are delivered. Coralline instead marks dependent values dirty and evaluates them when read. Which model is preferable depends on the application and the work performed.
 
-Coralline mirrors **Flutter's `RenderObject` rendering pipeline**:
+Coralline uses a related separation between invalidation and later computation. Flutter has its own rendering and frame scheduling pipeline:
 
 ```
 [ Phase 1: Push-Dirty ]
-controller.set(10) ---> Invalidate downstream _snapshots (O(1) lightweight notification)
+controller.set(10) ---> Invalidate downstream _snapshots (lightweight notification)
 
 [ Phase 2: Coalescing ]
-100 state mutations within the same event loop are debounced into 1 invalidation
+Repeated synchronous changes can be coalesced by the dirty-push scheduler; Flutter still controls when widgets build
 
 [ Phase 3: Pull-Data ]
 UI render cycle calls terminal.snapshot ---> Interrogate container (Valid/Empty/Damaged) & compute lazily
 ```
 
-#### Heterogeneous Source Bindings (Sync, Async, Isolate)
+#### Synchronous and asynchronous sources
 
-Coralline seamlessly manages heterogeneous upstream data sources without UI thread starvation:
-- **Synchronous In-Memory Binding** (`CoralController`, `Coral.value`): Immediately returns `Valid` snapshot; dispatches dirty signals synchronously.
-- **Asynchronous I/O Binding** (`CoralController.async`, REST API, WebSockets): 3-stage lifecycle transition (`Empty` pending $\rightarrow$ `Valid` payload / `Damaged` error). Eliminates `null` ambiguity.
-- **Parallel Isolate Worker Binding** (CPU-heavy encoding, ML): Offloads computations to background Dart Isolates via `SendPort`/`ReceivePort`, guaranteeing 60/120fps UI thread safety.
+Coralline supports synchronous values and async conversions. Applications can also feed results from work they run elsewhere into a controller:
+- **Synchronous In-Memory Binding** (`CoralController`, `Coral.data`): Immediately returns `Valid` snapshot; dispatches dirty signals synchronously.
+- **Asynchronous I/O Binding** (`Future.toCoral()`, `Stream.toCoral()`): Async conversions expose results through Coralline snapshots. An empty snapshot can represent a result that is not yet available, while a damaged snapshot carries an error. Applications choose how to handle nullable payloads.
+- **Background work**: Coralline does not create or manage Dart isolates. An application can perform work in an isolate and pass the result back through a controller or another source.
 
 <br><br>
 
@@ -141,4 +141,4 @@ void main() async {
 - **Coral**: Read-only lazy pipeline
 - **CoralTerminal**: UI/Destination pull point
 
-Next: 🔀 [Pipeline & Broadcasting Guide](02_pipeline_and_broadcasting.md) to learn about 1:N sharing and dynamic topology (`CoralCoupler`).
+Next: [Pipeline & Broadcasting Guide](02_pipeline_and_broadcasting.md) to learn about 1:N sharing and dynamic topology (`CoralCoupler`).

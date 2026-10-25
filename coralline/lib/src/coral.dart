@@ -33,7 +33,7 @@ part of '../coralline.dart';
 /// segregated into its own dedicated type ([CoralSnapshot.empty]). This allows the
 /// framework to safely and accurately process nullable data flows without logical overlap.
 ///
-/// **AI & Developer Note (Fail-Fast Enforcement):**
+/// **Implementation note (Fail-Fast Enforcement):**
 /// The snapshot acts as a physical barrier that stops the pipeline from blindly computing
 /// incomplete or corrupted data. If a developer attempts to directly extract the [data]
 /// property from an `empty` or `damaged` snapshot, the framework triggers a **Fail-Fast**
@@ -280,8 +280,8 @@ mixin CoralSnapshotDelegator<T> implements CorallineSnapshotDelegator<CoralSnaps
 /// - **[Coral.damaged]**: Creates a node carrying an error or exception.
 /// - **[Coral.resource]**: Creates a dynamic node binding resource creation and cleanup to the topological lifecycle.
 ///
-/// **AI & Developer Note (Lifecycle Management):**
-/// Coral operators (e.g., [map], [cachedMap], [keyedDiverge]) are designed purely for
+/// **Implementation note (Lifecycle Management):**
+/// Coral operators (e.g., [map], [CoralKeyedIterableElements.map], [CoralKeyedIterableElements.diverge]) are designed purely for
 /// **data transformation** in the middle of the pipeline. They do **not** assume
 /// ownership of the objects they instantiate, and will **not** automatically call
 /// `dispose` or `cancel` on them when evicted or cleared.
@@ -294,10 +294,10 @@ mixin CoralSnapshotDelegator<T> implements CorallineSnapshotDelegator<CoralSnaps
 ///    that triggers when the node deactivates.
 /// 2. **Using a `CoralController` (Source Edge)**: Manage and dispose of resources
 ///    manually within its `deactivate` lifecycle hook.
-/// 3. Resource Cleanup Support (`map`, `keyedDiverge`):
+/// 3. Resource Cleanup Support (`map`, `keyed.diverge`):
 ///    When converting objects using stateful nodes, developers must be careful not to
 ///    leak resources. Coralline provides operators like [map] and
-///    [keyedDiverge] to generate and return a new [Coral.resource]. The framework will
+///    [CoralKeyedIterableElements.diverge] to generate and return a new [Coral.resource]. The framework will
 ///    automatically call its `dispose` callback when the returned node is evicted or
 ///    loses its downstream listeners (deactivates).
 sealed class Coral<T> extends CoralNode with CoralSnapshotDelegator<T> {
@@ -364,6 +364,9 @@ sealed class Coral<T> extends CoralNode with CoralSnapshotDelegator<T> {
 
   /// Creates a static, instant leaf node in a corrupted (damaged) state, storing [error] and optional [stackTrace].
   ///
+  /// * [error]: The error or exception payload causing the damaged state.
+  /// * [stackTrace]: Optional stack trace associated with [error].
+  ///
   /// **Core Concept & Purpose:**
   /// Represents a corrupted, damaged node state (`CoralSnapshot.damaged()`). It promotes errors and exceptions
   /// into first-class, declarative topology nodes within the reactive graph.
@@ -391,9 +394,10 @@ sealed class Coral<T> extends CoralNode with CoralSnapshotDelegator<T> {
   ///   ```
   factory Coral.damaged(Object error, [StackTrace? stackTrace]) = _InstantCoral.damaged;
 
-  /// **Core Concept (Resource Node):**
-  /// Creates a dynamic, topology-aware leaf node that generates and manages
-  /// data only when active.
+  /// Creates a dynamic, topology-aware leaf node that generates and manages data only when active.
+  ///
+  /// * [create]: Resource factory invoked when the node becomes active.
+  /// * [dispose]: Teardown callback invoked when the node deactivates.
   ///
   /// **Requires:**
   /// * [create] MUST return the valid `T` data and is invoked when the node becomes active.
@@ -545,7 +549,7 @@ abstract interface class CoralProvider<T> implements CorallineLifecycleStatus {
 
   /// The underlying [Coral] instance managed by this provider.
   ///
-  /// **AI & Developer Note (Broadcaster Line Node & Caching Warning):**
+  /// **Implementation note (Broadcaster Line Node & Caching Warning):**
   /// - **Multi-Cast Line Generation:** When this provider is a [CoralBroadcaster] (e.g., created via a
   ///   `CoralController` with `broadcast: true`), every access to [coral] creates and returns a **new,
   ///   distinct branch (Line) node instance**.
@@ -854,7 +858,7 @@ extension CoralCollectionExtension<T> on Iterable<Coral<T>> {
   /// **Core Concept:**
   /// Extracts the underlying data from all Corals in this collection.
   ///
-  /// **AI & Developer Note (Fail-Fast Enforcement):**
+  /// **Implementation note (Fail-Fast Enforcement):**
   /// This extension property enforces Coralline's Fail-Fast design at the collection level.
   /// If any [Coral] in the iteration is in an `empty` or `damaged` state, reading `coral.data`
   /// will immediately throw an exception.
@@ -887,7 +891,7 @@ extension CoralSnapshotCollectionExtension<T> on Iterable<CoralSnapshot<T>> {
   /// **Core Concept:**
   /// Extracts the underlying data from all snapshots in this collection.
   ///
-  /// **AI & Developer Note (Fail-Fast Enforcement):**
+  /// **Implementation note (Fail-Fast Enforcement):**
   /// Inherits strict validation. Throws an exception if any snapshot in the collection
   /// is `isEmpty` or `isDamaged`.
   Iterable<T> get data => map((snapshot) => snapshot.data);

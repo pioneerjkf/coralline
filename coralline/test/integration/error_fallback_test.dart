@@ -54,7 +54,7 @@ void main() {
         fail('Should throw CoralSnapshotExtractionException');
       } on CoralSnapshotExtractionException catch (e) {
         expect(e.error, error);
-        expect(e.toString(), contains('🚨 ORIGINAL PIPELINE ERROR CAUSE:'));
+        expect(e.toString(), contains('[Coralline:Error] ORIGINAL PIPELINE ERROR CAUSE:'));
         expect(e.toString(), contains('Original computation error'));
       }
 
@@ -64,7 +64,7 @@ void main() {
         fail('Should throw CoralSnapshotExtractionException');
       } on CoralSnapshotExtractionException catch (e) {
         expect(e.error, error);
-        expect(e.toString(), contains('🚨 ORIGINAL PIPELINE ERROR CAUSE:'));
+        expect(e.toString(), contains('[Coralline:Error] ORIGINAL PIPELINE ERROR CAUSE:'));
         expect(e.toString(), contains('Original computation error'));
       }
     });

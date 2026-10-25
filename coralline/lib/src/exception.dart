@@ -4,7 +4,8 @@
 
 part of '../coralline.dart';
 
-/// **Design Philosophy (Diagnostics):**
+/// The base class for all recoverable exceptions in the Coralline framework.
+///
 /// The Coralline framework establishes a clear boundary between recoverable runtime
 /// failures and structural programming bugs:
 ///
@@ -25,9 +26,9 @@ abstract class CorallineException implements Exception {
   const CorallineException();
 }
 
-/// **Core Concept:**
-/// Thrown when a topological connection rule is violated at runtime,
-/// such as trying to release a node that is not attached to the joint.
+/// Thrown when a topological single-ownership connection rule is violated at runtime.
+///
+/// Occurs when trying to release or detach a node that is not currently attached to the joint.
 class CoralNodeReleaseViolationException extends CorallineException {
   const CoralNodeReleaseViolationException(this.joint, this.coralNode);
 
@@ -45,9 +46,10 @@ class CoralNodeReleaseViolationException extends CorallineException {
       'this node elsewhere.';
 }
 
-/// **Core Concept:**
-/// Thrown when a developer attempts to extract data from an invalid
-/// state (e.g., [isEmpty] or [isDamaged]) of a [CoralSnapshot] or [TrunkSnapshot].
+/// Thrown when attempting to extract data from an uninitialized or damaged snapshot state.
+///
+/// Fails fast when accessing `.data` on an [CoralSnapshot.isEmpty] or [CoralSnapshot.isDamaged]
+/// state of a [CoralSnapshot] or [TrunkSnapshot].
 class CoralSnapshotExtractionException extends CorallineException {
   const CoralSnapshotExtractionException(
     this.state,
@@ -75,7 +77,7 @@ class CoralSnapshotExtractionException extends CorallineException {
 
     if (error != null) {
       buffer.writeln('\n======================================');
-      buffer.writeln('🚨 ORIGINAL PIPELINE ERROR CAUSE:');
+      buffer.writeln('[Coralline:Error] ORIGINAL PIPELINE ERROR CAUSE:');
       buffer.writeln('$error');
       if (stackTrace != null && stackTrace != StackTrace.empty) {
         buffer.writeln('\nORIGINAL STACK TRACE:');
@@ -92,8 +94,9 @@ class CoralSnapshotExtractionException extends CorallineException {
   }
 }
 
-/// **Core Concept:**
-/// Thrown when a developer attempts to query state metadata (like [error] or [stackTrace])
+/// Thrown when attempting to query state metadata incompatible with the current snapshot state.
+///
+/// Fails when inspecting [CoralSnapshot.error] or [CoralSnapshot.stackTrace]
 /// from a snapshot state where it does not exist (e.g., querying error on a valid snapshot).
 class CoralSnapshotStateException extends CorallineException {
   const CoralSnapshotStateException(this.state, this.details);
@@ -112,8 +115,8 @@ class CoralSnapshotStateException extends CorallineException {
       "or use '.isValid' / '.isEmpty' to check the state first.";
 }
 
-/// **Core Concept:**
-/// Thrown when a reentrant call to `_pushDirty` is detected on a [_DirtyPoint].
+/// Thrown when a reentrant call to `_pushDirty` is detected during active notification.
+///
 /// This is a programmatic error indicating a cyclic update or structural bug.
 class CoralNodeReentrancyError extends StateError {
   CoralNodeReentrancyError([String? message]) : super(message ?? 'Reentrant call to _pushDirty detected.');

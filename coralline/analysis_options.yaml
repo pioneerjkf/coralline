@@ -3,6 +3,8 @@ include: package:lints/recommended.yaml
 formatter:
   page_width: 120
 analyzer:
+  errors:
+    comment_references: error
   exclude:
     - build/**
     - android/**
@@ -11,3 +13,4 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+

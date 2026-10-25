@@ -1,5 +1,9 @@
 # Architectural Comparison: Flutter SDK vs. Coralline Implicit Animations
 
+> [!WARNING]
+> **[UNIMPLEMENTED ARCHITECTURAL PROPOSAL]**
+> The abstractions described in this document (`ImplicitlyAnimatedWidgetComp`, `ImplicitTween`, `_animationSignal`) are future design proposals and do NOT exist in the active codebase. For active animation primitives, see `ResilientAnimationController`.
+
 ## 1. Overview & Background
 
 This document provides a comprehensive comparative analysis between the standard Flutter SDK's imperative implicit animation mechanism (`ImplicitlyAnimatedWidgetState`) and the `coralline_flutter` package's topological reactive architecture (`ImplicitlyAnimatedWidgetComp` + `ImplicitTween`). The computation analysis focuses on four key dimensions: **Computation & Performance**, **Memory Footprint & GC**, **Developer Experience (DX)**, and **Safety & System Resilience**.
@@ -10,12 +14,12 @@ This document provides a comprehensive comparative analysis between the standard
 
 ```
 [ Standard Flutter SDK Pattern ]
-StatefulWidget ??ImplicitlyAnimatedWidgetState ??didUpdateWidget (property diffing)
- ??forEachTween(TweenVisitor) ??controller.forward() ??per-frame setState() ??build()
+StatefulWidget ──> ImplicitlyAnimatedWidgetState ──> didUpdateWidget (property diffing)
+ ──> forEachTween(TweenVisitor) ──> controller.forward() ──> per-frame setState() ──> build()
 
 [ Coralline (coralline_flutter) Pattern ]
-Coral<T> Data Change ??Topological Reactive Dirty Push ??ImplicitlyAnimatedWidgetComp.compute()
- ??ImplicitTween.update() (1-line interpolation) ??_animationSignal auto-tick push ??UI Widget Output
+Coral<T> Data Change ──> Topological Reactive Dirty Push ──> ImplicitlyAnimatedWidgetComp.compute()
+ ──> ImplicitTween.update() (1-line interpolation) ──> _animationSignal auto-tick push ──> UI Widget Output
 ```
 
 ---
@@ -59,8 +63,8 @@ Coral<T> Data Change ??Topological Reactive Dirty Push ??ImplicitlyAnimatedWidge
    - **Coralline**: Subclassing `ImplicitlyAnimatedWidgetComp`, listing node dependencies in `manifest()`, and invoking `_paddingTween.update()` in `compute()` requires only 10 to 15 lines of code.
 
 2. **Pure Linear Unidirectional Data Flow**:
-   - **Flutter SDK**: Data flow is fragmented across 4 disconnected sites: Constructor ??`didUpdateWidget` ??`controller.forward()` ??`build()`.
-   - **Coralline**: Consolidates [Input ??Interpolation ??Widget Construction] into a single linear path within `compute()`, dramatically enhancing code readability and maintainability.
+   - **Flutter SDK**: Data flow is fragmented across 4 disconnected sites: Constructor ──> `didUpdateWidget` ──> `controller.forward()` ──> `build()`.
+   - **Coralline**: Consolidates [Input ──> Interpolation ──> Widget Construction] into a single linear path within `compute()`, dramatically enhancing code readability and maintainability.
 
 3. **Direct `Coral<T>` Node Binding**:
    - Accepting `Coral<T>` nodes directly allows UI elements to trigger smooth implicit animations simply by updating target data (`node.data = value`) without parent widget rebuilds or `setState` calls.
@@ -85,11 +89,11 @@ Coral<T> Data Change ??Topological Reactive Dirty Push ??ImplicitlyAnimatedWidge
 | Aspect | Standard Flutter SDK (`ImplicitlyAnimatedWidgetState`) | Coralline (`ImplicitlyAnimatedWidgetComp`) |
 | :--- | :--- | :--- |
 | **Property Diffing** | Dynamic `forEachTween` + `TweenVisitor` closures | `ImplicitTween.update()` O(1) inline comparison (0 closures) |
-| **Tick Propagation** | Per-tick `setState(() {})` ??Indiscriminate subtree dirty push | `_animationSignal` targeted push ??Pinpoint element dirtying |
+| **Tick Propagation** | Per-tick `setState(() {})` ──> Indiscriminate subtree dirty push | `_animationSignal` targeted push ──> Pinpoint element dirtying |
 | **Memory Overhead** | `Widget` + `State` + `Element` + `Tween` heap graph | 0B State object overhead, lightweight struct-like tweens |
 | **Resource Lifecycle** | Fragmented across `initState`, `didUpdateWidget`, `dispose` | Unified `Coral.resource` auto-teardown on mount/unmount |
 | **Boilerplate Code** | Requires implementing 6+ framework classes and visitor hooks | Concise 10-15 lines single-class declaration |
-| **Computation Pipeline** | 2-pass pipeline (`didUpdateWidget` ??`build`) | **Single-pass (`compute()` handles diff + lerp + build)** |
+| **Computation Pipeline** | 2-pass pipeline (`didUpdateWidget` ──> `build`) | **Single-pass (`compute()` handles diff + lerp + build)** |
 
 ---
 
@@ -101,7 +105,7 @@ In contrast, the **Coralline-based `ImplicitlyAnimatedWidgetComp` + `ImplicitTwe
 
 1. **Zero-Byte State Overhead**: Completely eliminates `StatefulWidget`/`State` long-lived object tiers, unifying logic into a single `CoralComputation`.
 2. **Minimized Computational Overhead**: Reduces per-frame closure allocations to zero while enabling O(1) inline target detection and interpolation.
-3. **Declarative Single-Pass Pipeline**: Consolidates the fragmented 2-pass pipeline (`didUpdateWidget` ??`build`) into a single pure `compute()` pass, boosting Developer Experience (DX) by over 400%.
+3. **Declarative Single-Pass Pipeline**: Consolidates the fragmented 2-pass pipeline (`didUpdateWidget` ──> `build`) into a single pure `compute()` pass, boosting Developer Experience (DX) by over 400%.
 4. **Leak-Proof Resource Resilience**: Leverages `CorallineLifecycleAware` and `Coral.resource` to structurally prevent Ticker memory leaks and zombie state crashes.
 
 In conclusion, the `ImplicitlyAnimatedWidgetComp` architecture overcomes every fundamental limitation of the standard Flutter SDK, establishing a **next-generation, highly resilient, zero-overhead standard for reactive implicit animations**.
