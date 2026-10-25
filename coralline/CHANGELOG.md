@@ -1,3 +1,12 @@
+## 0.1.4
+
+### Documentation & Verification
+- Enforce `comment_references: error` in analysis options.
+- Resolve all unresolved Dartdoc references and qualify symbol paths.
+- Add Apache 2.0 license headers across test, example, and internal source files.
+- Align manual documentation and terminology with precise, factual specifications.
+- Comply strictly with Zero-Emoji documentation policy.
+
 ## 0.1.3
 
 ### Fixes

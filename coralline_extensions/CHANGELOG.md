@@ -1,3 +1,10 @@
+## 0.1.4
+
+- Update `coralline` dependency constraint to `^0.1.4`.
+- Completely rewrite README to accurately document collection operators (`coral.elements`).
+- Add `broadcast: true` to quickstart and example controller setups for multi-subscriber topologies.
+- Enforce `comment_references: error` in analysis options and add missing Apache 2.0 license headers.
+
 ## 0.1.3
 
 - Update `coralline` dependency constraint to `^0.1.3`.

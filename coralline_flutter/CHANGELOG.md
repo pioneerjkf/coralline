@@ -1,3 +1,11 @@
+## 0.1.6
+
+- Update `coralline` and `coralline_extensions` dependency constraints to `^0.1.4`.
+- Resolve all unresolved Dartdoc references and qualify symbols across framework and animation.
+- Add proposal alert banner and fix character encodings in implicit animation documentation.
+- Add Apache 2.0 license headers across test, example, and animation files.
+- Enforce `comment_references: error` in analysis options and align documentation with Zero-Emoji policy.
+
 ## 0.1.5
 
 - Update `coralline` and `coralline_extensions` dependency constraints to `^0.1.3`.
