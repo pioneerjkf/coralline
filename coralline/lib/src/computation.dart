@@ -329,4 +329,3 @@ class ManifestSync {
   /// Const constructor for [manifestSync].
   const ManifestSync();
 }
-

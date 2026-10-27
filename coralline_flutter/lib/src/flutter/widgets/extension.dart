@@ -50,8 +50,48 @@ extension CoralBuildContextScopeExtension on Coral<BuildContext> {
 // Coral<BuildContext> Scope & Namespace Proxy Classes
 // =============================================================================
 
-/// **Core Concept (MediaQuery Proxy):**
-/// A dedicated proxy wrapper for [Coral<BuildContext>] to access fine-grained [MediaQuery] properties reactively.
+/// A proxy wrapper for [Coral<BuildContext>] to access fine-grained [MediaQuery] properties reactively.
+///
+/// Subscribes to fine-grained sub-properties of [MediaQueryData] without triggering unnecessary
+/// rebuilds when unrelated media metrics change.
+///
+/// ## Sub-Functor & Invocation Pathways
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │          CoralBuildContextMediaQueryProxy              │
+/// └────────────────────────────────────────────────────────┘
+///                            │
+///      ┌─────────────────────┼─────────────────────┐
+///      ▼                     ▼                     ▼
+///   [.size]              [.padding]          [.platformBrightness]
+///      │                     │                     │
+/// MediaQuery.sizeOf()  MediaQuery.paddingOf()  MediaQuery.platformBrightnessOf()
+///      │                     │                     │
+///   [Size]              [EdgeInsets]          [Brightness]
+/// ```
+///
+/// **Warning (Anti-Pattern Prevention):**
+/// - Avoid evaluating proxy streams repeatedly without caching; cache derived proxy streams as
+///   `late final` fields in components.
+///
+/// **BAD:**
+/// ```dart
+/// // [Anti-Pattern] Re-evaluating mediaQuery proxy streams ad-hoc without caching
+/// Widget render(Coral<BuildContext> contextCoral) {
+///   return Text('Size: ${contextCoral.mediaQuery.size.data}');
+/// }
+/// ```
+///
+/// **GOOD:**
+/// ```dart
+/// // [Recommended] Cache proxy reactive stream node as a late final field
+/// class ScreenLayoutComponent {
+///   ScreenLayoutComponent(Coral<BuildContext> contextCoral)
+///       : screenSize = contextCoral.mediaQuery.size;
+///
+///   final Coral<Size> screenSize;
+/// }
+/// ```
 extension type CoralBuildContextMediaQueryProxy._(Coral<BuildContext> _coral) {
   /// Exposes the underlying [Coral<BuildContext>] node.
   Coral<BuildContext> get context => _coral;
@@ -88,8 +128,20 @@ extension type CoralBuildContextMediaQueryProxy._(Coral<BuildContext> _coral) {
       _coral.map((e) => MediaQuery.devicePixelRatioOf(e)).distinct();
 }
 
-/// **Core Concept (Text Proxy):**
-/// A dedicated proxy wrapper for [Coral<BuildContext>] to access text styling properties reactively.
+/// A proxy wrapper for [Coral<BuildContext>] to access text styling properties reactively.
+///
+/// ## Sub-Functor & Invocation Pathways
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │             CoralBuildContextTextProxy                 │
+/// └────────────────────────────────────────────────────────┘
+///                            │
+///                            ▼ [.defaultStyle]
+///                  DefaultTextStyle.of(context)
+///                            │
+///                            ▼
+///                   [DefaultTextStyle]
+/// ```
 extension type CoralBuildContextTextProxy._(Coral<BuildContext> _coral) {
   /// Exposes the underlying [Coral<BuildContext>] node.
   Coral<BuildContext> get context => _coral;
@@ -99,8 +151,20 @@ extension type CoralBuildContextTextProxy._(Coral<BuildContext> _coral) {
       _coral.map((e) => DefaultTextStyle.of(e)).distinct();
 }
 
-/// **Core Concept (Localization Proxy):**
-/// A dedicated proxy wrapper for [Coral<BuildContext>] to access locale and directionality properties reactively.
+/// A proxy wrapper for [Coral<BuildContext>] to access locale and directionality properties reactively.
+///
+/// ## Sub-Functor & Invocation Pathways
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │         CoralBuildContextLocalizationProxy             │
+/// └────────────────────────────────────────────────────────┘
+///               │                           │
+///               ▼ [.locale]                 ▼ [.direction]
+///      Localizations.localeOf()       Directionality.of()
+///               │                           │
+///               ▼                           ▼
+///           [Locale]                 [TextDirection]
+/// ```
 extension type CoralBuildContextLocalizationProxy._(
     Coral<BuildContext> _coral) {
   /// Exposes the underlying [Coral<BuildContext>] node.
@@ -115,12 +179,21 @@ extension type CoralBuildContextLocalizationProxy._(
       _coral.map((e) => Directionality.of(e)).distinct();
 }
 
-/// **Core Concept (Scope Proxy):**
-/// A dedicated proxy wrapper for [Coral<BuildContext>] to access focus, form, navigation, and scroll scope controllers reactively.
+/// A proxy wrapper for [Coral<BuildContext>] to access focus, form, navigation, and scroll scope controllers reactively.
 ///
 /// **Scope Isolation Note:**
 /// Only core Flutter widget framework scope controllers (`widgets.dart`) are exposed here.
 /// Material- or Cupertino-specific scope features are excluded.
+///
+/// ## Sub-Functor & Invocation Pathways
+/// ```text
+/// ┌─────────────────────────────────────────────────────────────────┐
+/// │                  CoralBuildContextScopeProxy                    │
+/// └─────────────────────────────────────────────────────────────────┘
+///       │             │              │             │             │
+///       ▼ [.focus]    ▼ [.form]      ▼ [.navigator]▼ [.overlay]  ▼ [.scrollable]
+///   FocusScope.of  Form.maybeOf  Navigator.maybeOf Overlay.maybeOf Scrollable.maybeOf
+/// ```
 extension type CoralBuildContextScopeProxy._(Coral<BuildContext> _coral) {
   /// Exposes the underlying [Coral<BuildContext>] node.
   Coral<BuildContext> get context => _coral;

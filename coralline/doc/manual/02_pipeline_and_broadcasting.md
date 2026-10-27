@@ -93,12 +93,12 @@ Combining `diverge` and `converge` forms a Diamond Topology where a single state
                                                └──> [Child Coral<T> N] ──┘
 ```
 
-#### Dirty Push Suppression (`_suppressedDirtyPushCount`)
-During dynamic line swapping, secondary dirty cascades are suppressed by `_suppressedDirtyPushCount`, coalescing nested topology changes into a single downstream notification and preventing infinite cascade loops.
+#### Dirty Push Suppression
+During dynamic line swapping, secondary dirty cascades are suppressed, coalescing nested topology changes into a single downstream notification and preventing infinite cascade loops.
 
 #### Hotswap vs Coldswap
 - **Coldswap (`hotswap: false`, default)**: Immediately disconnects old node for GC memory cleanliness.
-- **Hotswap (`hotswap: true`)**: Keeps old node alive via `_MooringPoint` until new node completes connection, avoiding UI data gaps.
+- **Hotswap (`hotswap: true`)**: Retains the previous node and its value until the new node completes connection, avoiding UI data gaps or transient empty frames.
 
 <br><br>
 
@@ -106,9 +106,9 @@ During dynamic line swapping, secondary dirty cascades are suppressed by `_suppr
 
 Coralline packages all pipeline data in an immutable `CoralSnapshot<T>` struct:
 
-- **`CoralSnapshotValid<T>`**: Valid data payload.
-- **`CoralSnapshotEmpty<T>`**: Uninitialized state.
-- **`CoralSnapshotDamaged<T>`**: Computation exception state (`error`, `stackTrace`).
+- **Valid (`snapshot.isValid`)**: Contains safely resolvable data payload (`snapshot.data`).
+- **Empty (`snapshot.isEmpty`)**: Represents an uninitialized state (`CoralSnapshot.empty()`).
+- **Damaged (`snapshot.isDamaged`)**: Computation exception state carrying `snapshot.error` and `snapshot.stackTrace`.
 
 #### 3 Defense Principles (`Guarded`, `Optimistically`, `Safely`)
 1. **`Guarded`**: Absorbs user computation errors into `CoralSnapshot.damaged` boxes gracefully.

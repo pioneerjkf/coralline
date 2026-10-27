@@ -4,6 +4,8 @@
 
 part of '../coralline.dart';
 
+/// Defines the handling behavior for uncaught pipeline exceptions.
+///
 /// **Core Concept (Error Delegation Intent):**
 /// Defines the intended behavior for handling uncaught exceptions that occur
 /// asynchronously or unexpectedly within the topological pipeline during its lifecycle.
@@ -86,6 +88,16 @@ abstract base class CorallineTerminalIntent {
 /// As the destination of CoralNode's efficient architecture, the terminal plays
 /// a critical role in the 4-Phase Flow:
 ///
+/// ## Terminal Push-Pull Lifecycle Flow
+/// ```text
+/// 1. activate() ──> Propagate Active Upstream ──> Wake Up Sources
+///                                                       │
+/// 2. onDirty() <── Push Invalidation Signal <───────────┘
+///       │
+///       ▼
+/// 3. terminal.data ──> Pull Evaluation Request ──> Return Resolved Payload
+/// ```
+///
 /// **Phase 1 & 2: Injection & Propagation (Upstream)**
 /// - The controller injects data, and a lightweight "Dirty" flag propagates down
 ///   the topological graph toward this terminal.
@@ -121,10 +133,12 @@ sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
   @override
   final CorallineTerminalIntent? intent;
 
+  /// Activates the terminal and begins observing the upstream data pipeline.
+  ///
   /// **Core Concept (Lifecycle - Activation):**
-  /// Activates the terminal, signaling to the topological graph that an external
-  /// consumer is now actively observing the data pipeline. This triggers upstream
-  /// nodes to allocate resources and begin lazy computation.
+  /// Signals to the topological graph that an external consumer is now actively
+  /// observing the data pipeline. This triggers upstream nodes to allocate resources
+  /// and begin lazy computation.
   ///
   /// **Operational Mechanism:**
   /// 1. **Idempotency Check:** Guarantees that redundant activation calls are safely
@@ -138,9 +152,11 @@ sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
     _activateOptimistically();
   }
 
+  /// Temporarily suspends the terminal.
+  ///
   /// **Core Concept (Lifecycle - Pause):**
-  /// Temporarily suspends the terminal. Upstream nodes are notified of the pause
-  /// and may choose to halt expensive background work (like animations or polling).
+  /// Upstream nodes are notified of the pause and may choose to halt expensive
+  /// background work (like animations or polling).
   ///
   /// **Operational Mechanism:**
   /// 1. **Idempotency Check:** Guarantees that redundant pause calls are safely
@@ -155,9 +171,10 @@ sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
     _pauseOptimistically();
   }
 
+  /// Resumes a paused terminal.
+  ///
   /// **Core Concept (Lifecycle - Resume):**
-  /// Resumes a paused terminal. Upstream nodes are notified and will restart
-  /// their suspended operations.
+  /// Upstream nodes are notified and will restart their suspended operations.
   ///
   /// **Operational Mechanism:**
   /// 1. **Idempotency Check:** Guarantees that redundant resume calls are safely
@@ -172,9 +189,10 @@ sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
     _resumeOptimistically();
   }
 
+  /// Permanently detaches the terminal from the graph, releasing all topological connections.
+  ///
   /// **Core Concept (Lifecycle - Deactivation):**
-  /// Permanently detaches the terminal from the graph, releasing all topological
-  /// connections.
+  /// Detaches the terminal from the graph and releases all topological connections.
   ///
   /// **Operational Mechanism:**
   /// 1. **Idempotency Check:** Guarantees that redundant deactivation calls are safely
@@ -195,16 +213,19 @@ sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
     _deactivateOptimistically();
   }
 
+  /// Whether the terminal has been activated by an external consumer.
   bool get isActivated => _state.isActivated;
 
+  /// Whether the terminal is currently running (activated and not paused).
   bool get isRunning => _state.isRunning;
 
+  /// Whether the terminal is temporarily paused.
   bool get isPaused => _state.isPaused;
 
+  /// Whether the terminal has been permanently deactivated.
   bool get isDeactivated => _state.isDeactivated;
 }
 
-/// **Core Concept:**
 /// A concrete [CorallineTerminal] designed specifically for 1:1 [Coral] pipelines.
 ///
 /// It mixes in [CoralSnapshotDelegator] to provide direct, type-safe access
@@ -221,7 +242,6 @@ base class CoralTerminal<T> extends CorallineTerminal<Coral<T>> with CoralSnapsh
   Coral<T> _catchDamaged(Object error, StackTrace? stackTrace) => Coral.damaged(error, stackTrace);
 }
 
-/// **Core Concept:**
 /// A concrete [CorallineTerminal] designed specifically for [Trunk] pipelines.
 ///
 /// It mixes in [TrunkSnapshotDelegator] to provide direct, type-safe access

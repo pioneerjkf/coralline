@@ -224,6 +224,30 @@ mixin TrunkSnapshotDelegator<T> implements CorallineSnapshotDelegator<TrunkSnaps
 /// as a macroscopic state manager, allowing downstream nodes to compute or
 /// transform the entire collection as a single unit without breaking the reactive graph.
 ///
+/// ## System Architectural Flow
+/// ```text
+/// [Coral Line 1] ──┐
+/// [Coral Line 2] ──┼──> [Trunk<T> Bundle] ──> Push Dirty ──> [Downstream Terminal]
+/// [Coral Line N] ──┘         │
+///                            └──> Lazy Pull Aggregation / Combine / Converge
+/// ```
+///
+/// **Warning (Anti-Pattern Prevention):**
+///
+/// * **BAD (Repeatedly calling `.toTrunk()` in high-frequency loops/builds):**
+///   ```dart
+///   // Anti-pattern: Re-bundling corals in every build cycle reallocates topology nodes
+///   Widget build(BuildContext context) {
+///     final trunk = [coralA, coralB].toTrunk(); // Re-creates and leaks pipeline on every build
+///     return Text('${trunk.combine().data}');
+///   }
+///   ```
+/// * **GOOD (Declare trunk pipeline once):**
+///   ```dart
+///   // Recommended: Bundle lines once during component initialization
+///   late final Trunk<int> trunk = [coralA, coralB].toTrunk();
+///   ```
+///
 /// **Intended Usage (Static & Resource Factories):**
 /// Use the default constructor to bundle valid lines. Use the `damaged` or
 /// `empty` factories to represent terminal failure or uninitialized states
@@ -333,11 +357,15 @@ abstract interface class TrunkProvider<T> implements CorallineLifecycleStatus {
   bool get isDeactivated;
 }
 
+/// Convenience conversion methods for [Trunk] pipelines.
 extension TrunkExtension<T> on Trunk<T> {
+  /// Connects this [Trunk] bundle to a [TrunkTerminal] with the given [onDirty] callback.
   TrunkTerminal<T> toTerminal(void Function() onDirty) => TrunkTerminal<T>(this, onDirty: onDirty);
 }
 
+/// Convenience conversion extensions available directly on any [TrunkProvider].
 extension TrunkProviderExtension<T> on TrunkProvider<T> {
+  /// Connects this provider's underlying [trunk] to a [TrunkTerminal] with the given [onDirty] callback.
   TrunkTerminal<T> toTerminal(void Function() onDirty) => trunk.toTerminal(onDirty);
 }
 
@@ -440,11 +468,17 @@ extension TrunkComputationExtension<S> on Trunk<S> {
       };
 }
 
+/// Computation operators available directly on any [TrunkProvider].
+///
+/// Automatically delegates operations to the underlying [Trunk] node.
 extension TrunkProviderComputationExtension<S> on TrunkProvider<S> {
+  /// Delegates [TrunkComputationExtension.aggregate] to the underlying [Trunk].
   Coral<T> aggregate<T>(T Function(Iterable<Coral<S>> lines) aggregate) => trunk.aggregate(aggregate);
 
+  /// Delegates [TrunkComputationExtension.combine] to the underlying [Trunk].
   Coral<List<S>> combine() => trunk.combine();
 
+  /// Delegates [TrunkComputationExtension.converge] to the underlying [Trunk].
   Coral<T> converge<T>(
     Coral<T> Function(Iterable<Coral<S>> lines) cascade, {
     bool seal = true,

@@ -4,9 +4,26 @@
 
 part of '../../../cupertino.dart';
 
-/// **Core Concept (Cupertino Theme Proxy):**
-/// A dedicated proxy wrapper for [Coral<BuildContext>] to access Flutter [CupertinoThemeData],
-/// [CupertinoTextThemeData], colors, and brightness reactively.
+/// A proxy wrapper for [Coral<BuildContext>] to access Flutter [CupertinoThemeData], [CupertinoTextThemeData], colors, and brightness reactively.
+///
+/// ## Sub-Functor & Invocation Pathways
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │         CoralBuildContextCupertinoThemeProxy           │
+/// └────────────────────────────────────────────────────────┘
+///       │                   │                   │
+///       ▼ [.data]           ▼ [.primaryColor]   ▼ [.brightness]
+/// CupertinoTheme.of() CupertinoTheme.of().primary CupertinoTheme.brightnessOf()
+///       │                   │                   │
+///       ▼                   ▼                   ▼
+/// [CupertinoThemeData]    [Color]              [Brightness]
+/// ```
+///
+/// ## Key Invariants & Architectural Benefits
+/// 1. **Atomic Cupertino Token Observers**: Allows selective subscriptions to brightness or
+///    individual color tokens without re-evaluating the parent container widget.
+/// 2. **Deduplicated Property Stream**: Every property stream is equipped with `.distinct()` to
+///    suppress downstream updates when token values are identical.
 extension type CoralBuildContextCupertinoThemeProxy._(
     Coral<BuildContext> _coral) {
   /// Exposes the underlying [Coral<BuildContext>] node.

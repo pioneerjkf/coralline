@@ -2,6 +2,12 @@
 // Use of this source code is governed by an Apache 2.0 license that can be
 // found in the LICENSE file.
 
+/// @docImport 'package:flutter/widgets.dart';
+///
+/// Declarative Flutter widgets and context-aware reactive computation components.
+///
+/// Provides [SimplexBuildComponent] (1:1), [BuildComponent] (N:1), [CoralWidget],
+/// [CorallineBuildContextAware], and [InheritedCoralProviderWidget].
 library;
 
 import 'dart:async';

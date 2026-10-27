@@ -4,9 +4,26 @@
 
 part of '../../../material.dart';
 
-/// **Core Concept (Theme Proxy):**
-/// A dedicated proxy wrapper for [Coral<BuildContext>] to access Flutter [ThemeData],
-/// [ColorScheme], [TextTheme], and [IconThemeData] reactively.
+/// A proxy wrapper for [Coral<BuildContext>] to access Flutter [ThemeData], [ColorScheme], [TextTheme], and [IconThemeData] reactively.
+///
+/// ## Sub-Functor & Invocation Pathways
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │              CoralBuildContextThemeProxy               │
+/// └────────────────────────────────────────────────────────┘
+///       │                  │                  │
+///       ▼ [.data]          ▼ [.colorScheme]   ▼ [.textTheme]
+///   Theme.of(e)       Theme.of(e).colorScheme Theme.of(e).textTheme
+///       │                  │                  │
+///       ▼                  ▼                  ▼
+///  [ThemeData]        [ColorScheme]       [TextTheme]
+/// ```
+///
+/// ## Key Invariants & Architectural Benefits
+/// 1. **Atomic Token Selection**: Observing [colorScheme] or [textTheme] allows fine-grained
+///    subscription without exposing raw widget trees to bulk theme rebuild passes.
+/// 2. **Distinct Output Caching**: All mapped outputs are chained with `.distinct()` to prevent
+///    redundant dirty notifications if theme values do not change.
 extension type CoralBuildContextThemeProxy._(Coral<BuildContext> _coral) {
   /// Exposes the underlying [Coral<BuildContext>] node.
   Coral<BuildContext> get context => _coral;

@@ -4,9 +4,7 @@
 
 part of '../coralline.dart';
 
-/// **Core Concept (State Container):**
-/// The base sealed class for all snapshot types, representing an immutable,
-/// atomic state container at a specific point in time.
+/// The base sealed class for all snapshot types, representing an immutable, atomic state container.
 ///
 /// **Design Philosophy (Fail-Fast Validation):**
 /// Snapshots force developers to safely check [isValid], [isEmpty], or [isDamaged]
@@ -25,6 +23,10 @@ sealed class CorallineSnapshot {
   StackTrace get stackTrace;
 }
 
+/// Interface for classes that delegate and forward their underlying [CorallineSnapshot] state.
+///
+/// Implementing this interface allows nodes (such as [Coral] and [Trunk]) to expose
+/// snapshot status accessors directly on their own instances.
 abstract interface class CorallineSnapshotDelegator<S extends CorallineSnapshot> {
   S get snapshot;
 
@@ -39,7 +41,8 @@ abstract interface class CorallineSnapshotDelegator<S extends CorallineSnapshot>
   StackTrace get stackTrace;
 }
 
-/// **Core Concept (Snapshot Collection Utility):**
+/// Utility extensions for inspecting and filtering an `Iterable` of [CorallineSnapshot] instances.
+///
 /// Provides convenience methods to inspect and filter an `Iterable` of [CorallineSnapshot]s.
 extension CorallineSnapshotCollectionExtension<E extends CorallineSnapshot> on Iterable<E> {
   /// Returns `true` if every snapshot in this collection is in a `valid` state.
@@ -72,9 +75,10 @@ extension CorallineSnapshotCollectionExtension<E extends CorallineSnapshot> on I
   Iterable<E> whereInvalid() => where((snapshot) => !snapshot.isValid);
 }
 
-/// **Core Concept (Delegator Collection Utility):**
+/// Utility extensions for inspecting and filtering an `Iterable` of [CorallineSnapshotDelegator] objects.
+///
 /// Provides convenience methods to inspect and filter an `Iterable` of objects that
-/// implement [CorallineSnapshotDelegator] (such as `Coral` or `Trunk`).
+/// implement [CorallineSnapshotDelegator] (such as [Coral] or [Trunk]).
 extension CorallineSnapshotDelegatorCollectionExtension<E extends CorallineSnapshotDelegator> on Iterable<E> {
   /// Returns `true` if every delegator in this collection is in a `valid` state.
   @pragma('vm:prefer-inline')

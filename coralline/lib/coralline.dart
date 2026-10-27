@@ -2,6 +2,30 @@
 // Use of this source code is governed by an Apache 2.0 license that can be
 // found in the LICENSE file.
 
+/// The foundational reactive state management framework for pure Dart and Flutter.
+///
+/// Coralline implements the **CORAL** (**C**hain **o**f **R**eactivity **A**nd **L**azy-computation)
+/// architecture, separating change invalidation from data computation through an efficient
+/// Push-Dirty, Pull-Data execution pipeline.
+///
+/// ## System Architectural Flow
+/// ```text
+/// State Mutation (Source)
+///        │
+///        ▼
+/// [CoralController] ──> Push Dirty Signal (O(1) Mark Dirty) ──> [CoralNode Graph]
+///                                                                      │
+/// External Consumer <── Pull Data (Lazy Synchronous Value) <───────────┘
+/// ```
+///
+/// ## Core Subsystems
+/// - **Reactive Units**: [Coral] (atomic/single-value reactive signal) and [Trunk] (composite multi-line bundle).
+/// - **Imperative Sources**: [CoralController] and [TrunkController] for injecting state changes into the graph.
+/// - **Distribution & Swapping**: [CoralBroadcaster] for 1:N multi-subscriber fan-out and [CoralCoupler] for runtime node swapping.
+/// - **Terminal Endpoints**: [CoralTerminal] and [TrunkTerminal] for connecting external consumers and managing lifecycle.
+/// - **State Encapsulation**: [CoralSnapshot], [TrunkSnapshot], and [CorallineSnapshot] for fail-fast, null-safe payload boxing.
+/// - **Element Collections**: [CoralIterableElements], [CoralListElements], [CoralSetElements], and [CoralMapElements].
+/// - **Async Adapters**: [FutureCoralExtension], [StreamCoralExtension], and [StreamControllerCoralExtension].
 library;
 
 import 'dart:async';

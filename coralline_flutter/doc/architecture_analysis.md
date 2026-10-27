@@ -45,8 +45,8 @@ Even if 1,000 data changes arrive before the UI renders the screen, the 999 sign
 Only when the `CoralTerminal` (UI) is ready to draw the screen in sync with the device's refresh rate (e.g., 60Hz), does it **traverse backward up the pipeline**, pull the latest data, and perform the heavy computation (Formatting, etc.) exactly once.
 
 > [!TIP]
-> **Extreme Garbage Collector (GC) Optimization**
-> It takes the approach of generating and discarding an infinite number of short-lived `CoralSnapshot` objects (Allocate & Discard). This perfectly matches the behavior of the V8/Dart engine's Nursery (Bump-pointer allocation) and Scavenger GC, enabling overwhelmingly faster performance and zero-overhead memory management compared to hash map caching.
+> **Garbage Collector (GC) Optimization**
+> Generating and discarding short-lived `CoralSnapshot` instances adheres to the allocation model of the Dart VM's nursery (bump-pointer allocation) and scavenger GC, avoiding cache lookup penalties and reducing long-lived heap retention compared to global mutable state tables.
 
 ---
 
@@ -58,31 +58,28 @@ Only when the `CoralTerminal` (UI) is ready to draw the screen in sync with the 
 | **Data Propagation** | **Push-Dirty, Pull-Data (Lazy Computation)** | Two-way binding / Push | Stream Push | Push/Pull mixed (Primarily Push) | Push-Dirty, Pull-Data |
 | **UI Action Handling**| **Explicit Upstream Intent (`Terminal` -> `Computation`)** | Direct ViewModel method calls | Push Event into Sink | Direct Notifier method calls | Direct Signal value mutation |
 | **GC / Memory Strategy**| **Bump-pointer & Scavenger GC targeting optimization** | Regular object heap allocation | State/Event object heap allocation | Cache invalidation (`invalidate`) support | Lightweight nodes & minimized garbage |
-| **Safety / Topology** | **Intent Firewall, Forced structural Anomaly handling (`catchDamaged`)** | Relies on runtime error checks | Error handling during event processing | Error catch via AsyncValue | Exception propagation to derived nodes |
-| **Dynamic Swap(Hotswap)**| **Framework-level zero-downtime swap (`MooringPoint` support)** | Manual cache invalidation & reconnect | StreamSubscription cancel/reset | `ref.watch` dynamic dependency refresh | Dynamic tracking refresh within `effect` |
+| **Safety / Topology** | **Intent Firewall, Structural Anomaly handling (`fallback`)** | Relies on runtime error checks | Error handling during event processing | Error catch via AsyncValue | Exception propagation to derived nodes |
+| **Dynamic Swap (Hotswap)**| **Framework-level zero-downtime swap (`CoralCoupler` support)** | Manual cache invalidation & reconnect | StreamSubscription cancel/reset | `ref.watch` dynamic dependency refresh | Dynamic tracking refresh within `effect` |
 
 > [!NOTE]
 > **Detailed Comparison with BLoC, Riverpod, and Signals**
 >
-> ?뵻 **vs BLoC (Unidirectional MVI Framework)**
-> - **Inherited Philosophy**: **Unidirectional data flow** and MVI concept of receiving an Event/Intent to produce a State.
-> - **Legacy Limitation**: State transitions as a massive 'object chunk', and computations execute synchronously immediately upon event occurrence (Push).
-> - **Coralline Flutter's Edge**: Breaks down massive state into **small topological nodes (DAG)** and optimizes by **delaying heavy computations until UI rendering (Pull)**, even under a bombardment of frequent events.
+> - **vs BLoC (Unidirectional MVI Framework)**
+>   - **Shared Concepts**: Unidirectional data flow and MVI paradigm of receiving an Event/Intent to produce a State.
+>   - **Design Differences**: BLoC executes state transformations synchronously upon event dispatch (Push model). Coralline Flutter separates fine-grained state into a Directed Acyclic Graph (DAG) and defers derived widget computation until the Flutter build/render phase (Pull model).
 >
-> ?뵻 **vs Riverpod (DAG State Management)**
-> - **Inherited Philosophy**: **Directed Acyclic Graph (DAG)** topology to combine multiple states and manage dependencies.
-> - **Legacy Limitation**: When data changes, the ripple effect of computations tends to propagate downstream based on microtasks or synchronous Push.
-> - **Coralline Flutter's Edge**: Instead of propagating computations, it emits an O(1) **lightweight Dirty signal**, fundamentally blocking CPU waste during frequent updates.
+> - **vs Riverpod (DAG State Management)**
+>   - **Shared Concepts**: Uses a Directed Acyclic Graph (DAG) to compose multiple state nodes and maintain dependency relationships.
+>   - **Design Differences**: Upstream mutations in Riverpod invalidate and push re-evaluations downstream. Coralline Flutter emits an $O(1)$ push-dirty notification flag to dependent elements, deferring node computation until the active terminal pulls the value on frame rendering.
 >
-> ?뵻 **vs Signals (Preact Reactive Primitives)**
-> - **Inherited Philosophy**: Completely identical **Push-Dirty, Pull-Data** structure that only passes change signals and computes on read.
-> - **Legacy Limitation**: Limited in controlling large-scale UI architectures as it only provides general 'Reactive Primitives'.
-> - **Coralline Flutter's Edge**: Beyond simple variable management, it establishes a 'massive pipeline framework' structure tailored for the Flutter lifecycle, featuring **Upstream Intent backward propagation (MVI)**, an **Intent Firewall** to prevent 1:N topology collisions, and runtime **Hotswap (`CoralCoupler`)**.
+> - **vs Signals (Preact Reactive Primitives)**
+>   - **Shared Concepts**: Shares the Push-Dirty, Pull-Data invalidation model, notifying dependents of dirty state while evaluating data on read.
+>   - **Design Differences**: Signals packages focus on fine-grained reactive primitives. Coralline Flutter integrates with Flutter's element lifecycle via `CorallineBuildContextAware`, provides upstream intent routing with structural isolation via `CoralBroadcaster`, and supports runtime pipeline reconnection via `CoralCoupler`.
 
 ---
 
 ## 4. Conclusion
 
-The most accurate architectural model name to describe Coralline Flutter is the **"Lazy-Computed Topological Reactive DAG based on MVI"**.
+Coralline Flutter is structured as a **Lazy-Computed Topological Reactive DAG based on MVI principles**.
 
-This goes beyond simply asking "How should we manage state?", and is an architecture infused with deep contemplation on **"How do we systematically overcome the limitations of the Garbage Collector's behavior and the UI rendering pipeline?"** In particular, in UI environments accompanied by high-frequency real-time communications (stock order books, IoT monitoring, etc.) or heavy computations, it can be analyzed as a model providing incomparable, overwhelming performance and stability over other frameworks.
+By decomposing monolithic view-model state into fine-grained reactive nodes and coordinating invalidation with Flutter's frame build cycle, Coralline Flutter prevents redundant intermediate derivations and isolates UI rebuild boundaries for predictable performance.

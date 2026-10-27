@@ -26,6 +26,14 @@ part of '../coralline.dart';
 /// - **Hidden Terminal**: Internally, it creates a hidden terminal to
 ///   securely pull data from the upstream graph.
 ///
+/// ## 1:N Multi-Cast Fan-Out Diagram
+/// ```text
+///                                            ┌──> [Downstream Terminal A]
+/// [Inbound Coral] ──> [CoralBroadcaster] ────┼──> [Downstream Terminal B]
+///                           │                └──> [Downstream Terminal C]
+///                           └── Hidden Terminal (Single Upstream Subscriber)
+/// ```
+///
 /// **Intended Usage & Data Flow Architecture (Push-Dirty, Pull-Data):**
 /// As a 1:N distributor, it slightly modifies the standard data flow:
 ///
@@ -39,6 +47,21 @@ part of '../coralline.dart';
 ///   computes it, and safely caches the result.
 /// - When the second (or Nth) consumer requests data in the same cycle, it
 ///   instantly receives the cached snapshot without triggering upstream computation.
+///
+/// **Warning (Anti-Pattern Prevention):**
+///
+/// * **BAD (Placing intent-dependent computations upstream of a broadcaster):**
+///   ```dart
+///   // Anti-pattern: Broadcaster drops intents to prevent 1:N parameter conflicts
+///   final intentAwareCoral = MyIntentAwareComputation().coral;
+///   final broadcaster = CoralBroadcaster(intentAwareCoral); // Downstream intents will NOT reach intentAwareCoral
+///   ```
+/// * **GOOD (Position intent-aware nodes downstream of the broadcaster):**
+///   ```dart
+///   // Recommended: Share the common pipeline, then specialize downstream with intent awareness
+///   final sharedBroadcaster = CoralBroadcaster(rawSourceCoral);
+///   final specializedPipeline = sharedBroadcaster.coral.cascade((data) => MyIntentAwareComputation(data).coral);
+///   ```
 ///
 /// **Implementation note:**
 /// - **No Intent Propagation**: If an upstream node requires a specific UI context

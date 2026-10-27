@@ -12,27 +12,76 @@ part of '../../../animation.dart';
 /// activated, preserves parameters locally during dormant states, and restores state
 /// seamlessly when reactivated or reset.
 ///
-/// **Design Philosophy:**
-/// This class adopts a resilient state-delegate pattern (`_DormantAnimationControlDelegate` and
-/// `_ActiveAnimationControlDelegate`) to ensure state continuity and fault tolerance. When
-/// dormant, parameter updates and state mutations are safely staged locally without
-/// instantiating an active [AnimationController] engine or throwing state errors. When the
-/// [coral] resource activates, delegates swap seamlessly into an active engine without breaking
-/// existing listeners or property values. Furthermore, when the resource is deactivated, the
-/// controller gracefully reverts back to a dormant state, demonstrating complete resilience
-/// against lifecycle teardowns.
-/// It also implements [CoralProvider<double>], optionally broadcasting value changes when
-/// [broadcast] is `true`.
+/// ## State Machine Architecture (2-State Resilient FSM)
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │             Dormant State (_DormantDelegate)           │
+/// │  - Staged parameters (duration, value, bounds, vsync)  │
+/// │  - No active Ticker allocated                          │
+/// └────────────────────────────────────────────────────────┘
+///                            │
+///      [coral activates]     │     [coral deactivates]
+///            ┌───────────────┴───────────────┐
+///            ▼                               │
+/// ┌──────────────────────────────────────────┴─────────────┐
+/// │              Active State (_ActiveDelegate)            │
+/// │  - Real AnimationController engine allocated           │
+/// │  - Synchronized ticker driving frame simulations       │
+/// └────────────────────────────────────────────────────────┘
+/// ```
 ///
-/// **Implementation note:**
-/// - Do not manually call `engine.dispose()` directly on the underlying [AnimationController].
-///   Resource disposal must be handled via the [coral] lifecycle manager or [dispose].
-/// - Parameter updates performed while dormant will be synchronized into the active engine
-///   once instantiated.
-/// - If [broadcast] is set to `true`, multiple subscribers can listen to the [coral] resource
-///   without triggering duplicate resource initializations.
+/// ## Key Invariants & Architectural Benefits
+/// 1. **Lazy Engine Allocation**: Defers Flutter [AnimationController] instantiation until the
+///    underlying [coral] resource is actively observed in a reactive topology.
+/// 2. **Dormant Resilience**: Mutating parameters (e.g., [duration], [value]) while dormant stages
+///    the values without throwing errors or running empty tickers.
+/// 3. **Teardown Grace**: Automatically swaps back to the dormant delegate upon deactivation,
+///    preventing ticker leaks.
 ///
-/// **Example:**
+/// **Warning (Anti-Pattern Prevention):**
+/// - Do NOT invoke motion-driving methods (e.g. [forward], [reverse], [animateTo]) while dormant;
+///   they require an active [coral] resource topology and will throw [StateError].
+/// - Do NOT manually dispose the underlying engine directly; manage disposal via [dispose].
+///
+/// **BAD:**
+/// ```dart
+/// // [Anti-Pattern] Triggering forward() on an un-manifested (dormant) controller
+/// void triggerAnimation(ResilientAnimationController controller) {
+///   controller.forward(); // Throws StateError if controller.coral is not active!
+/// }
+/// ```
+///
+/// **GOOD:**
+/// ```dart
+/// // [Recommended] Manifest controller.coral in the reactive topology before driving animation
+/// base class AnimatedPanel extends ComplexComputation<Widget>
+///     with
+///         CorallineLifecycleAware,
+///         CorallineBuildContextAware,
+///         SingleTickerProviderCorallineLifecycleAwareMixin {
+///   AnimatedPanel({required this.child});
+///
+///   final Widget child;
+///
+///   late final controller = ResilientAnimationController(
+///     duration: const Duration(milliseconds: 300),
+///     vsync: this,
+///   );
+///
+///   @override
+///   Iterable<CoralNode> manifest() => [controller.coral];
+///
+///   void trigger() {
+///     if (controller.isAnimating) return;
+///     controller.forward();
+///   }
+///
+///   @override
+///   Widget build() => FadeTransition(opacity: controller, child: child);
+/// }
+/// ```
+///
+/// ## Examples
 /// ```dart
 /// base class ExpandablePanel extends ComplexComputation<Widget>
 ///     with
@@ -290,12 +339,20 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// Setting this value while dormant preserves the duration and notifies listeners.
   Duration? get duration => _delegate.duration;
+
+  /// Sets the length of time this animation should last.
+  ///
+  /// Staged while dormant, or updated on the active engine if running.
   set duration(Duration? value) => _delegate.duration = value;
 
   /// The length of time this animation should last when going in reverse.
   ///
   /// Setting this value while dormant preserves the duration and notifies listeners.
   Duration? get reverseDuration => _delegate.reverseDuration;
+
+  /// Sets the length of time this animation should last when going in reverse.
+  ///
+  /// Staged while dormant, or updated on the active engine if running.
   set reverseDuration(Duration? value) => _delegate.reverseDuration = value;
 
   /// Recreates the underlying ticker with a new [TickerProvider].
@@ -310,7 +367,12 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.resync(newVsyncProvider);
+  /// void updateVsync(
+  ///   ResilientAnimationController controller,
+  ///   TickerProvider newVsync,
+  /// ) {
+  ///   controller.resync(newVsync);
+  /// }
   /// ```
   void resync(TickerProvider vsync) {
     this.vsync = vsync;
@@ -339,7 +401,9 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.reset();
+  /// void resetAnimation(ResilientAnimationController controller) {
+  ///   controller.reset();
+  /// }
   /// ```
   void reset() => _delegate.reset();
 
@@ -393,7 +457,9 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.forward(from: 0.0);
+  /// void playAnimation(ResilientAnimationController controller) {
+  ///   controller.forward(from: 0.0);
+  /// }
   /// ```
   TickerFuture forward({double? from}) => _delegate.forward(from: from);
 
@@ -412,7 +478,9 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.reverse(from: 1.0);
+  /// void rewindAnimation(ResilientAnimationController controller) {
+  ///   controller.reverse(from: 1.0);
+  /// }
   /// ```
   TickerFuture reverse({double? from}) => _delegate.reverse(from: from);
 
@@ -433,7 +501,9 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.toggle();
+  /// void toggleAnimation(ResilientAnimationController controller) {
+  ///   controller.toggle();
+  /// }
   /// ```
   TickerFuture toggle({double? from}) => _delegate.toggle(from: from);
 
@@ -454,7 +524,9 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.animateTo(0.8, duration: const Duration(milliseconds: 200));
+  /// void zoomTo(ResilientAnimationController controller) {
+  ///   controller.animateTo(0.8, duration: const Duration(milliseconds: 200));
+  /// }
   /// ```
   TickerFuture animateTo(double target,
           {Duration? duration, Curve curve = Curves.linear}) =>
@@ -477,7 +549,9 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.animateBack(0.2);
+  /// void zoomBack(ResilientAnimationController controller) {
+  ///   controller.animateBack(0.2);
+  /// }
   /// ```
   TickerFuture animateBack(double target,
           {Duration? duration, Curve curve = Curves.linear}) =>
@@ -503,7 +577,9 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.repeat(reverse: true);
+  /// void pulse(ResilientAnimationController controller) {
+  ///   controller.repeat(reverse: true);
+  /// }
   /// ```
   TickerFuture repeat({
     double? min,
@@ -532,7 +608,9 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.fling(velocity: 2.0);
+  /// void flick(ResilientAnimationController controller) {
+  ///   controller.fling(velocity: 2.0);
+  /// }
   /// ```
   TickerFuture fling({
     double velocity = 1.0,
@@ -559,7 +637,12 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.animateWith(customSimulation);
+  /// void runSimulation(
+  ///   ResilientAnimationController controller,
+  ///   Simulation simulation,
+  /// ) {
+  ///   controller.animateWith(simulation);
+  /// }
   /// ```
   TickerFuture animateWith(Simulation simulation) =>
       _delegate.animateWith(simulation);
@@ -579,7 +662,12 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.animateBackWith(customSimulation);
+  /// void runReverseSimulation(
+  ///   ResilientAnimationController controller,
+  ///   Simulation simulation,
+  /// ) {
+  ///   controller.animateBackWith(simulation);
+  /// }
   /// ```
   TickerFuture animateBackWith(Simulation simulation) =>
       _delegate.animateBackWith(simulation);
@@ -594,7 +682,9 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.stop();
+  /// void pauseAnimation(ResilientAnimationController controller) {
+  ///   controller.stop();
+  /// }
   /// ```
   void stop({bool canceled = true}) => _delegate.stop(canceled: canceled);
 
@@ -608,7 +698,9 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// controller.dispose();
+  /// void teardown(ResilientAnimationController controller) {
+  ///   controller.dispose();
+  /// }
   /// ```
   @override
   void dispose() {
@@ -625,7 +717,11 @@ base class ResilientAnimationController extends Animation<double>
   ///
   /// **Example:**
   /// ```dart
-  /// final animation = controller.drive(Tween<double>(begin: 0.0, end: 100.0));
+  /// Animation<double> createScaleAnimation(
+  ///   ResilientAnimationController controller,
+  /// ) {
+  ///   return controller.drive(Tween<double>(begin: 0.0, end: 100.0));
+  /// }
   /// ```
   @override
   Animation<U> drive<U>(Animatable<U> child) => child.animate(this);

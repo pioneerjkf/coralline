@@ -97,16 +97,17 @@ Coral<T> Data Change ──> Topological Reactive Dirty Push ──> ImplicitlyA
 
 ---
 
-## 5. Overall Conclusion
+## 5. Architectural Proposal Assessment
 
-The standard Flutter SDK's implicit animation architecture (`ImplicitlyAnimatedWidgetState`) was designed in Flutter's early days on top of imperative `StatefulWidget` mechanics paired with an object visitor pattern (`TweenVisitor`). This approach requires manual property diffing, imposes significant boilerplate, creates heap GC pressure via dynamic closure allocations, and indiscriminately marks entire subtrees dirty on every frame via `setState()`.
+The standard Flutter SDK's implicit animation architecture (`ImplicitlyAnimatedWidgetState`) is based on imperative `StatefulWidget` mechanics paired with an object visitor pattern (`TweenVisitor`). This approach requires property diffing in `didUpdateWidget`, incurs boilerplate across multiple lifecycle hooks, and marks the host `StatefulElement` dirty on each animation frame via `setState()`.
 
-In contrast, the **Coralline-based `ImplicitlyAnimatedWidgetComp` + `ImplicitTween` architecture** implemented in `coralline_flutter` achieves four transformative breakthroughs:
+In comparison, the **proposed `ImplicitlyAnimatedWidgetComp` + `ImplicitTween` architectural design** detailed in this whitepaper explores four core design advantages for future reactive animation primitives:
 
-1. **Zero-Byte State Overhead**: Completely eliminates `StatefulWidget`/`State` long-lived object tiers, unifying logic into a single `CoralComputation`.
-2. **Minimized Computational Overhead**: Reduces per-frame closure allocations to zero while enabling O(1) inline target detection and interpolation.
-3. **Declarative Single-Pass Pipeline**: Consolidates the fragmented 2-pass pipeline (`didUpdateWidget` ──> `build`) into a single pure `compute()` pass, boosting Developer Experience (DX) by over 400%.
-4. **Leak-Proof Resource Resilience**: Leverages `CorallineLifecycleAware` and `Coral.resource` to structurally prevent Ticker memory leaks and zombie state crashes.
+1. **State Tier Consolidation**: Eliminates the intermediate `State` object tier by consolidating animation scheduling into a single `CoralComputation`.
+2. **Deterministic Inline Interpolation**: Replaces dynamic visitor closure allocations with inline target detection ($O(1)$ scalar checks).
+3. **Unified Derivation Pass**: Fuses property diffing and widget emission into a single reactive `compute()` pass.
+4. **Lifecycle-Coupled Ticker Bounds**: Binds ticker resources directly to `CorallineLifecycleAware` and `Coral.resource` lifecycle boundaries.
 
-In conclusion, the `ImplicitlyAnimatedWidgetComp` architecture overcomes every fundamental limitation of the standard Flutter SDK, establishing a **next-generation, highly resilient, zero-overhead standard for reactive implicit animations**.
+As noted in the header specification, this design remains an architectural exploration. Active production codebases should continue using `ResilientAnimationController` and `TickerProviderCorallineLifecycleAwareMixin` for production animations.
+
 

@@ -29,9 +29,7 @@ extension MapCoralElementsExtension<K, V> on Coral<Map<K, V>> {
   CoralMapElements<K, V> get elements => CoralMapElements<K, V>._(this);
 }
 
-/// **Core Concept (Collection Element Proxy):**
-/// A dedicated proxy wrapper for [Coral<Iterable<E>>] to perform element-wise
-/// transformations and computations safely and defensively.
+/// A proxy wrapper for [Coral<Iterable<E>>] to perform element-wise transformations safely.
 ///
 /// Under the hood, all collection-returning operations immediately compute and package
 /// results into an immutable list ([List.unmodifiable]) to prevent lazy computation exceptions
@@ -254,9 +252,7 @@ extension type CoralKeyedIterableElements<E>._(Coral<Iterable<E>> _coral) {
       };
 }
 
-/// **Core Concept (List Element Proxy):**
-/// A dedicated proxy wrapper for [Coral<List<E>>] to perform list-specific
-/// transformations and lookup computations.
+/// A proxy wrapper for [Coral<List<E>>] to perform list-specific transformations and lookup computations.
 extension type CoralListElements<E>._(Coral<List<E>> _coral) implements CoralIterableElements<E> {
   /// Look up the element at [index] reactively.
   Coral<E> operator [](int index) => _coral.map((list) => list[index]);
@@ -291,9 +287,7 @@ extension type CoralListElements<E>._(Coral<List<E>> _coral) implements CoralIte
   Coral<List<E>> toUnmodifiable() => _coral.map((list) => List.unmodifiable(list));
 }
 
-/// **Core Concept (Set Element Proxy):**
-/// A dedicated proxy wrapper for [Coral<Set<E>>] to perform set-specific
-/// transformations and operations while preserving set types.
+/// A proxy wrapper for [Coral<Set<E>>] to perform set-specific transformations and operations.
 extension type CoralSetElements<E>._(Coral<Set<E>> _coral) implements CoralIterableElements<E> {
   /// Looks up [object] in the set reactively.
   Coral<E?> lookup(Object? object) => _coral.map((set) => set.lookup(object));
@@ -314,9 +308,7 @@ extension type CoralSetElements<E>._(Coral<Set<E>> _coral) implements CoralItera
   Coral<Set<E>> toUnmodifiable() => _coral.map((set) => Set.unmodifiable(set));
 }
 
-/// **Core Concept (Map Element Proxy):**
-/// A dedicated proxy wrapper for [Coral<Map<K, V>>] to perform map-specific
-/// lookup, mapping, and filtering operations.
+/// A proxy wrapper for [Coral<Map<K, V>>] to perform map-specific lookup, mapping, and filtering operations.
 extension type CoralMapElements<K, V>._(Coral<Map<K, V>> _coral) {
   /// Exposes the underlying [Coral] node of this elements proxy.
   Coral<Map<K, V>> get coral => _coral;

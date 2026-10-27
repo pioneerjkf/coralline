@@ -11,8 +11,50 @@ extension CoralBuildContextCupertinoExtension on Coral<BuildContext> {
       CoralBuildContextCupertinoProxy._(this);
 }
 
-/// **Core Concept (Cupertino Proxy):**
-/// Root proxy wrapper providing access to Cupertino Theme, TextTheme, colors, and user interface level.
+/// A proxy wrapper providing access to Cupertino Theme, TextTheme, colors, and user interface level.
+///
+/// ## Sub-Functor & Invocation Pathways
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │            CoralBuildContextCupertinoProxy             │
+/// └────────────────────────────────────────────────────────┘
+///       │                                  │
+///       ▼ [.theme]                         ▼ [.userInterfaceLevel]
+/// [CoralBuildContextCupertinoThemeProxy]  CupertinoUserInterfaceLevel.maybeOf(e)
+///       │
+///       ├─► .primaryColor
+///       ├─► .textTheme
+///       ├─► .barBackgroundColor
+///       └─► .scaffoldBackgroundColor
+/// ```
+///
+/// ## Key Invariants & Architectural Benefits
+/// 1. **Structured Namespacing**: Isolates Cupertino-specific token streams within a dedicated proxy
+///    to avoid polluting the core [Coral<BuildContext>] namespace.
+/// 2. **Deduplicated Property Propagation**: Each accessor filters unchanged values via `.distinct()`.
+///
+/// **Warning (Anti-Pattern Prevention):**
+/// - Avoid accessing proxy properties on every rebuild pass without caching;
+///   cache derived proxy streams as `late final` fields in components.
+///
+/// **BAD:**
+/// ```dart
+/// // [Anti-Pattern] Reading Cupertino theme proxy dynamically in build without caching
+/// Widget render(Coral<BuildContext> contextCoral) {
+///   return Text('Color: ${contextCoral.cupertino.primaryColor.data}');
+/// }
+/// ```
+///
+/// **GOOD:**
+/// ```dart
+/// // [Recommended] Cache Cupertino proxy stream as a late final field
+/// class CupertinoCardComponent {
+///   CupertinoCardComponent(Coral<BuildContext> contextCoral)
+///       : primaryColor = contextCoral.cupertino.primaryColor;
+///
+///   final Coral<Color> primaryColor;
+/// }
+/// ```
 extension type CoralBuildContextCupertinoProxy._(Coral<BuildContext> _coral) {
   /// Exposes the underlying [Coral<BuildContext>] node.
   Coral<BuildContext> get context => _coral;

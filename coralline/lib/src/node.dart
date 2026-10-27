@@ -4,8 +4,8 @@
 
 part of '../coralline.dart';
 
-/// **Core Concept:**
 /// The abstract base class representing any reactive node participating in the CORAL architecture.
+///
 /// It acts as the common base for all single-value nodes ([Coral]) and bundled nodes ([Trunk]).
 ///
 /// `CoralNode` is a combination of **`CORAL`** (the acronym representing the architecture)

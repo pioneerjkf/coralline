@@ -28,6 +28,30 @@ part of '../coralline.dart';
 ///   a mooring scheduler to ensure they can be cleanly garbage collected, preventing
 ///   memory leaks.
 ///
+/// ## Dynamic Socket Hotswap Diagram
+/// ```text
+/// [Initial Inbound] ──(Detach & Deactivate)──┐
+///                                            ├──> [CoralCoupler Socket] ──> [Downstream Pipeline]
+/// [New Inbound]     ──(Attach & Activate)────┘
+/// ```
+///
+/// **Warning (Anti-Pattern Prevention):**
+///
+/// * **BAD (Swapping an active pipeline without `hotswap: true`):**
+///   ```dart
+///   // Anti-pattern: Coupler created with default hotswap: false throws when swapped while running
+///   final coupler = CoralCoupler<int>(sourceA); // hotswap: false
+///   terminal.activate();
+///   coupler.couple(sourceB); // Throws exception when swapped while active!
+///   ```
+/// * **GOOD (Enable `hotswap: true` when runtime swapping occurs while active):**
+///   ```dart
+///   // Recommended: Explicitly declare hotswap capability for running pipelines
+///   final coupler = CoralCoupler<int>(sourceA, hotswap: true);
+///   terminal.activate();
+///   coupler.couple(sourceB); // Seamlessly transfers activation to sourceB
+///   ```
+///
 /// **Implementation note:**
 /// Swapping nodes during active execution requires `hotswap: true` to be set during
 /// initialization. Attempting to couple a node strongly owned by a non-detachable parent

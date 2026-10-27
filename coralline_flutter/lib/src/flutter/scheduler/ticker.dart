@@ -25,18 +25,69 @@ class _CorallineLifecycleTicker extends Ticker {
 /// synchronizes all created tickers with app lifecycle transitions (pausing/resuming)
 /// and tree [TickerMode] states.
 ///
-/// **Design Philosophy:**
-/// Decouples ticker lifecycle management from Flutter's [StatefulWidget] tree, enabling
-/// business logic components or custom view models with [CorallineLifecycleAware] and
-/// [CorallineBuildContextAware] capabilities to host animations cleanly while remaining responsive
-/// to lifecycle events and subtree ticker mode changes.
+/// ## Lifecycle Flow Diagram
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │         Coralline Ticker Provider Lifecycle            │
+/// └────────────────────────────────────────────────────────┘
+///       │
+///       ▼ didActivate()
+/// [Tickers Active] <─── didResume() ──┐
+///       │                             │
+///       ▼ didPause()                  │
+/// [Tickers Muted] ────────────────────┘
+///       │
+///       ▼ didDeactivate()
+/// [All Tickers Disposed / Assert Cleaned]
+/// ```
 ///
-/// **Implementation note:**
-/// All created [Ticker]s must be disposed (typically via their managing animation controllers)
-/// before [didDeactivate] is invoked. Active tickers remaining during deactivation will throw
-/// an assertion error in debug mode to prevent ticker memory leaks.
+/// ## Key Invariants & Architectural Benefits
+/// 1. **Decoupled Business Logic**: Decouples animation ticker orchestration from Flutter's
+///    widget tree, allowing view models and controllers to manage tickers safely.
+/// 2. **Automatic Lifecycle Synchronization**: Synchronizes ticker mute states automatically
+///    with [didPause] and [didResume] lifecycle hooks.
+/// 3. **Subtree Ticker Mode Awareness**: Dynamically listens to ancestor [TickerMode] changes
+///    via [didUpdateBuildContext].
 ///
-/// **Example:**
+/// **Warning (Anti-Pattern Prevention):**
+/// - Failing to dispose animation controllers before [didDeactivate] leads to ticker leaks and
+///   debug assertions.
+/// - Do not manually mute tickers directly; rely on Coralline's lifecycle methods.
+///
+/// **BAD:**
+/// ```dart
+/// // [Anti-Pattern] Omitting animation controller disposal in didDeactivate
+/// class LeakingAnimationModel extends CorallineLifecycleAware
+///     with CorallineBuildContextAware, TickerProviderCorallineLifecycleAwareMixin {
+///   late final AnimationController controller;
+///
+///   void init() {
+///     controller = AnimationController(vsync: this, duration: const Duration(seconds: 1));
+///   }
+///   // didDeactivate is missing controller.dispose(), triggering a debug assertion error!
+/// }
+/// ```
+///
+/// **GOOD:**
+/// ```dart
+/// // [Recommended] Explicitly dispose all controllers in didDeactivate before calling super
+/// class CleanAnimationModel extends CorallineLifecycleAware
+///     with CorallineBuildContextAware, TickerProviderCorallineLifecycleAwareMixin {
+///   late final AnimationController controller;
+///
+///   void init() {
+///     controller = AnimationController(vsync: this, duration: const Duration(seconds: 1));
+///   }
+///
+///   @override
+///   void didDeactivate() {
+///     controller.dispose();
+///     super.didDeactivate();
+///   }
+/// }
+/// ```
+///
+/// ## Examples
 /// ```dart
 /// class MultiAnimationController extends CorallineLifecycleAware
 ///     with CorallineBuildContextAware, TickerProviderCorallineLifecycleAwareMixin {
@@ -205,17 +256,63 @@ base mixin TickerProviderCorallineLifecycleAwareMixin
 /// optimized for components that require exactly one animation controller. It automatically
 /// synchronizes the ticker with app lifecycle transitions (pausing/resuming) and tree [TickerMode] states.
 ///
-/// **Design Philosophy:**
-/// Provides a lightweight, single-ticker allocation pattern for [CorallineLifecycleAware]
-/// objects. Enforces single-use semantics to prevent accidental creation of extra tickers while
-/// automatically propagating lifecycle state.
+/// ## Lifecycle Flow Diagram
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │      Single Ticker Provider Lifecycle Transition       │
+/// └────────────────────────────────────────────────────────┘
+///       │
+///       ▼ createTicker() [Allocates exactly one instance]
+/// [Active Ticker] <─── didResume() ──┐
+///       │                            │
+///       ▼ didPause()                 │
+/// [Muted Ticker] ────────────────────┘
+///       │
+///       ▼ didDeactivate()
+/// [Ticker Disposed / Assert Cleaned]
+/// ```
 ///
-/// **Implementation note:**
-/// Calling [createTicker] more than once on the same instance will throw an assertion error in debug mode.
-/// If multiple tickers are needed, use [TickerProviderCorallineLifecycleAwareMixin] instead.
-/// The created ticker must be disposed before calling `super.didDeactivate()`.
+/// ## Key Invariants & Architectural Benefits
+/// 1. **Zero-Overhead Single Ticker**: Optimized for components hosting exactly one animation controller.
+/// 2. **Single-Use Assertion Guard**: Calling [createTicker] more than once throws an assertion error,
+///    preventing accidental multi-ticker leakage.
+/// 3. **Subtree Ticker Mode Awareness**: Dynamically synchronizes frame ticking with ancestor [TickerMode].
 ///
-/// **Example:**
+/// **Warning (Anti-Pattern Prevention):**
+/// - Do NOT create multiple animation controllers or call [createTicker] multiple times with this mixin.
+/// - If a component needs 2 or more tickers, use [TickerProviderCorallineLifecycleAwareMixin].
+/// - The created ticker must be disposed before calling `super.didDeactivate()`.
+///
+/// **BAD:**
+/// ```dart
+/// // [Anti-Pattern] Attempting to create two tickers on a single-ticker mixin
+/// class DoubleAnimationModel extends CorallineLifecycleAware
+///     with CorallineBuildContextAware, SingleTickerProviderCorallineLifecycleAwareMixin {
+///   late final AnimationController c1 = AnimationController(vsync: this);
+///   late final AnimationController c2 = AnimationController(vsync: this); // Debug assertion error!
+/// }
+/// ```
+///
+/// **GOOD:**
+/// ```dart
+/// // [Recommended] Use SingleTickerProviderCorallineLifecycleAwareMixin strictly for 1 ticker
+/// class SingleAnimationModel extends CorallineLifecycleAware
+///     with CorallineBuildContextAware, SingleTickerProviderCorallineLifecycleAwareMixin {
+///   late final AnimationController controller;
+///
+///   void init() {
+///     controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+///   }
+///
+///   @override
+///   void didDeactivate() {
+///     controller.dispose();
+///     super.didDeactivate();
+///   }
+/// }
+/// ```
+///
+/// ## Examples
 /// ```dart
 /// class SingleAnimationController extends CorallineLifecycleAware
 ///     with CorallineBuildContextAware, SingleTickerProviderCorallineLifecycleAwareMixin {

@@ -211,13 +211,11 @@ sealed class CoralSnapshot<T> extends CorallineSnapshot {
   bool isEquivalent(covariant CoralSnapshot<T> other, [bool Function(T previous, T next)? equals]);
 }
 
-/// **Core Concept (Snapshot Delegation):**
-/// A mixin that forwards all [CoralSnapshot] properties and accessors directly
-/// to the implementing class.
+/// A mixin that forwards all [CoralSnapshot] properties and accessors directly to the implementing class.
 ///
-/// **Design Philosophy (Ergonomics):**
+/// **Core Concept (Snapshot Delegation):**
 /// Similar to `TrunkSnapshotDelegator`, this mixin drastically reduces boilerplate
-/// by allowing nodes to expose their snapshot properties (like `isValid`, `data`)
+/// by allowing nodes to expose their snapshot properties (like [isValid], [data])
 /// directly on the instance (e.g., `coral.data` instead of `coral.snapshot.data`).
 mixin CoralSnapshotDelegator<T> implements CorallineSnapshotDelegator<CoralSnapshot<T>> {
   @override
@@ -265,6 +263,29 @@ mixin CoralSnapshotDelegator<T> implements CorallineSnapshotDelegator<CoralSnaps
 /// to the **Push-Dirty, Pull-Data** architecture. It acts as a reactive node that holds
 /// a [CoralSnapshot] (via [CoralSnapshotDelegator]) and signals downstream nodes when
 /// its data needs to be re-computed.
+///
+/// ## System Architectural Flow
+/// ```text
+/// [Upstream / Controller] ──> Push Dirty ──> [Coral<T>] ──> Push Dirty ──> [Downstream Terminal]
+///                                              │
+/// Downstream Consumer <────── Lazy Pull Data <─┘
+/// ```
+///
+/// **Warning (Anti-Pattern Prevention):**
+///
+/// * **BAD (Repeatedly allocating pipelines in build loops/methods):**
+///   ```dart
+///   // Anti-pattern: Instantiating transformation nodes inside high-frequency build cycles
+///   Widget build(BuildContext context) {
+///     final doubledCoral = counterCoral.map((count) => count * 2); // Leaks and re-creates nodes on every build
+///     return Text('${doubledCoral.data}');
+///   }
+///   ```
+/// * **GOOD (Declare pipeline topology once and observe reactively):**
+///   ```dart
+///   // Recommended: Declare the derived pipeline once in a state or component class
+///   late final Coral<int> doubledCoral = counterCoral.map((count) => count * 2);
+///   ```
 ///
 /// **Design Philosophy (Topological Integration):**
 /// By extending [CoralNode], [Coral] fully integrates into the topological lifecycle.
@@ -600,11 +621,15 @@ abstract interface class CoralProvider<T> implements CorallineLifecycleStatus {
   bool get isDeactivated;
 }
 
+/// Convenience conversion and lifecycle observation methods for [Coral] nodes.
 extension CoralExtension<S> on Coral<S> {
+  /// Converts this 1:1 pipeline node into a 1:N [CoralBroadcaster].
   CoralBroadcaster<S> toBroadcaster() => CoralBroadcaster<S>(this);
 
+  /// Connects this [Coral] node to a [CoralTerminal] with the given [onDirty] callback.
   CoralTerminal<S> toTerminal(void Function() onDirty) => CoralTerminal<S>(this, onDirty: onDirty);
 
+  /// Attaches lifecycle event observers to this [Coral] pipeline.
   Coral<S> observeLifecycle({
     void Function()? onActivated,
     void Function()? onPaused,
@@ -620,9 +645,12 @@ extension CoralExtension<S> on Coral<S> {
       );
 }
 
+/// Convenience conversion extensions available directly on any [CoralProvider].
 extension CoralProviderExtension<S> on CoralProvider<S> {
+  /// Converts this provider's underlying [coral] into a 1:N [CoralBroadcaster].
   CoralBroadcaster<S> toBroadcaster() => coral.toBroadcaster();
 
+  /// Connects this provider's underlying [coral] to a [CoralTerminal] with the given [onDirty] callback.
   CoralTerminal<S> toTerminal(void Function() onDirty) => CoralTerminal<S>(coral, onDirty: onDirty);
 }
 
@@ -809,7 +837,8 @@ extension CoralComputationExtension<S> on Coral<S> {
   Coral<T> map<T>(T Function(S source) convert) => _MapCoral<S, T>(this, convert: convert);
 }
 
-/// **Core Concept (Provider Delegation):**
+/// Computation operators available directly on any [CoralProvider].
+///
 /// A convenience extension that allows computation operators to be called directly
 /// on any [CoralProvider] (such as `Coralline` or custom components), automatically
 /// delegating the operation to the underlying [Coral] node.
@@ -851,11 +880,11 @@ extension CoralProviderComputationExtension<S> on CoralProvider<S> {
   Coral<T> map<T>(T Function(S source) convert) => coral.map(convert);
 }
 
-/// **Core Concept (Collection Utility):**
+/// Utility extensions for operating on an `Iterable` of [Coral] nodes.
+///
 /// Provides convenience methods to inspect and manipulate an `Iterable` of [Coral] nodes
 /// as a cohesive group, without needing to manually map over their snapshots.
 extension CoralCollectionExtension<T> on Iterable<Coral<T>> {
-  /// **Core Concept:**
   /// Extracts the underlying data from all Corals in this collection.
   ///
   /// **Implementation note (Fail-Fast Enforcement):**
@@ -867,7 +896,6 @@ extension CoralCollectionExtension<T> on Iterable<Coral<T>> {
   /// corrupted data sets, preserving structural integrity.
   Iterable<T> get data => map((coral) => coral.data);
 
-  /// **Core Concept:**
   /// Bundles this collection of individual [Coral] nodes into a single [Trunk].
   ///
   /// * [seal]: If `true` (default), bundled lines are permanently owned by this trunk
@@ -884,15 +912,15 @@ extension CoralCollectionExtension<T> on Iterable<Coral<T>> {
   Trunk<T> toTrunk({bool seal = true, bool hotswap = false}) => Trunk.of(this, seal: seal, hotswap: hotswap);
 }
 
-/// **Core Concept (Snapshot Collection Utility):**
+/// Utility extensions for operating on an `Iterable` of [CoralSnapshot] instances.
+///
 /// Provides convenience methods to inspect and manipulate an `Iterable` of [CoralSnapshot]s
 /// as a cohesive group.
 extension CoralSnapshotCollectionExtension<T> on Iterable<CoralSnapshot<T>> {
-  /// **Core Concept:**
   /// Extracts the underlying data from all snapshots in this collection.
   ///
   /// **Implementation note (Fail-Fast Enforcement):**
   /// Inherits strict validation. Throws an exception if any snapshot in the collection
-  /// is `isEmpty` or `isDamaged`.
+  /// is [CorallineSnapshot.isEmpty] or [CorallineSnapshot.isDamaged].
   Iterable<T> get data => map((snapshot) => snapshot.data);
 }

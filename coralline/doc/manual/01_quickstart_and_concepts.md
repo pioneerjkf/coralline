@@ -79,10 +79,9 @@ class LoginFormState {
   LoginFormState() {
     isEmailValid = emailController.coral.map((email) => email.contains('@'));
     isPasswordValid = passwordController.coral.map((pw) => pw.length >= 8);
-    isFormValid = isEmailValid.combine(
-      isPasswordValid, 
-      (emailOk, pwOk) => emailOk && pwOk,
-    );
+    isFormValid = [isEmailValid, isPasswordValid]
+        .toTrunk()
+        .aggregate((lines) => lines.every((line) => line.data));
   }
 }
 
@@ -117,13 +116,13 @@ void main() async {
   late final CoralTerminal<List<String>> terminal;
   terminal = searchPipeline.toTerminal(() {
     scheduleMicrotask(() {
-      switch (terminal.snapshot) {
-        case CoralSnapshotValid(:final data):
-          print('Search results: $data');
-        case CoralSnapshotEmpty():
-          print('Please enter a search query...');
-        case CoralSnapshotDamaged(:final error):
-          print('Error loading search: $error');
+      final snapshot = terminal.snapshot;
+      if (snapshot.isValid) {
+        print('Search results: ${snapshot.data}');
+      } else if (snapshot.isEmpty) {
+        print('Please enter a search query...');
+      } else if (snapshot.isDamaged) {
+        print('Error loading search: ${snapshot.error}');
       }
     });
   });

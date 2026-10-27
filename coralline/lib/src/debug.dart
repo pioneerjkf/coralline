@@ -37,32 +37,62 @@ extension CorallineDebugExtension on CoralNode {
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
 
+/// Debug metadata extensions for [CorallineTerminal] instances.
 extension CorallineTerminalDebugExtension on CorallineTerminal {
+  /// (Debug Only) A developer-defined tag to identify this specific object.
   String? get debugTag => _debugTags[this];
+
+  /// (Debug Only) The exact code location where this object was created.
   String? get debugCreationLocation => _debugLocations[this];
+
+  /// (Debug Only) Captures the current stack trace and assigns an optional tag.
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
 
+/// Debug metadata extensions for [CoralController] instances.
 extension CoralControllerDebugExtension on CoralController {
+  /// (Debug Only) A developer-defined tag to identify this specific object.
   String? get debugTag => _debugTags[this];
+
+  /// (Debug Only) The exact code location where this object was created.
   String? get debugCreationLocation => _debugLocations[this];
+
+  /// (Debug Only) Captures the current stack trace and assigns an optional tag.
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
 
+/// Debug metadata extensions for [CoralComputation] instances.
 extension CoralComputationDebugExtension on CoralComputation {
+  /// (Debug Only) A developer-defined tag to identify this specific object.
   String? get debugTag => _debugTags[this];
+
+  /// (Debug Only) The exact code location where this object was created.
   String? get debugCreationLocation => _debugLocations[this];
+
+  /// (Debug Only) Captures the current stack trace and assigns an optional tag.
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
 
+/// Debug metadata extensions for [CoralBroadcaster] instances.
 extension CoralBroadcasterDebugExtension on CoralBroadcaster {
+  /// (Debug Only) A developer-defined tag to identify this specific object.
   String? get debugTag => _debugTags[this];
+
+  /// (Debug Only) The exact code location where this object was created.
   String? get debugCreationLocation => _debugLocations[this];
+
+  /// (Debug Only) Captures the current stack trace and assigns an optional tag.
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
 
+/// Debug metadata extensions for [CoralCoupler] instances.
 extension CoralCouplerDebugExtension on CoralCoupler {
+  /// (Debug Only) A developer-defined tag to identify this specific object.
   String? get debugTag => _debugTags[this];
+
+  /// (Debug Only) The exact code location where this object was created.
   String? get debugCreationLocation => _debugLocations[this];
+
+  /// (Debug Only) Captures the current stack trace and assigns an optional tag.
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }

@@ -97,13 +97,13 @@ final searchResults = searchController.coral.cascade((query) {
 
 late final CoralTerminal<String> terminal;
 terminal = searchResults.toTerminal(() {
-  switch (terminal.snapshot) {
-    case CoralSnapshotValid(:final data):
-      print('Results: $data');
-    case CoralSnapshotEmpty():
-      print('Type a search query...');
-    case CoralSnapshotDamaged(:final error):
-      print('Error loading results: $error');
+  final snapshot = terminal.snapshot;
+  if (snapshot.isValid) {
+    print('Results: ${snapshot.data}');
+  } else if (snapshot.isEmpty) {
+    print('Type a search query...');
+  } else if (snapshot.isDamaged) {
+    print('Error loading results: ${snapshot.error}');
   }
 });
 terminal.activate();

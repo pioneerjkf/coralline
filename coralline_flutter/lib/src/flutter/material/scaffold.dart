@@ -4,9 +4,26 @@
 
 part of '../../../material.dart';
 
-/// **Core Concept (Scaffold Proxy):**
-/// A dedicated proxy wrapper for [Coral<BuildContext>] to access [ScaffoldMessengerState]
-/// and ancestor [ScaffoldState] reactively.
+/// A proxy wrapper for [Coral<BuildContext>] to access [ScaffoldMessengerState] and ancestor [ScaffoldState] reactively.
+///
+/// ## Sub-Functor & Invocation Pathways
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │             CoralBuildContextScaffoldProxy             │
+/// └────────────────────────────────────────────────────────┘
+///               │                           │
+///               ▼ [.messenger]              ▼ [.state]
+///      ScaffoldMessenger.of()          Scaffold.maybeOf()
+///               │                           │
+///               ▼                           ▼
+///     [ScaffoldMessengerState]            [ScaffoldState?]
+/// ```
+///
+/// ## Key Invariants & Architectural Benefits
+/// 1. **Nullable Ancestor Safety**: Uses `Scaffold.maybeOf` for [state] to avoid runtime exceptions
+///    when rendering outside of an ancestor [Scaffold].
+/// 2. **Notification Isolation**: Distinct mappings ensure consumers only update when the resolved
+///    scaffold state reference changes.
 extension type CoralBuildContextScaffoldProxy._(Coral<BuildContext> _coral) {
   /// Exposes the underlying [Coral<BuildContext>] node.
   Coral<BuildContext> get context => _coral;

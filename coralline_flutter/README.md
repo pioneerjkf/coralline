@@ -345,23 +345,28 @@ Widget buildSafeUserCard(UserProfileCard component) {
 }
 ```
 
-> **Pro Tip: App-Wide Shared Fallback Extension Pattern**
-> Create a project-specific extension (e.g. `toAppWidget()`) to encapsulate your design system's default error UI and logging (e.g. Sentry, Firebase) globally across your entire app:
-> ```dart
-> extension AppCoralWidgetExtension<T extends CoralComputation<Widget>> on T {
->   CoralWidget toAppWidget({
->     Key? key,
->     Widget Function(BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder,
->   }) {
->     return toWidget(
->       key: key,
->       errorBuilder: errorBuilder ?? (context, error, stackTrace) {
->         return AppStandardErrorWidget(error: error); // Shared Design System Fallback
->       },
->     );
->   }
-> }
-> ```
+> **Pro Tip: App-Wide Shared Fallback Extension Pattern**  
+> Create a project-specific extension (e.g. `toAppWidget()`) to encapsulate your design system's default error UI centrally across your application:
+
+```dart
+extension AppCoralWidgetExtension<T extends CoralComputation<Widget>> on T {
+  CoralWidget toAppWidget({
+    Key? key,
+    Widget Function(BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder,
+  }) {
+    return toWidget(
+      key: key,
+      errorBuilder: errorBuilder ?? (context, error, stackTrace) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          color: Theme.of(context).colorScheme.errorContainer,
+          child: Text('Error: $error'),
+        );
+      },
+    );
+  }
+}
+```
 
 <br><br>
 
@@ -459,7 +464,7 @@ Coralline Flutter represents UI output as a reactive computation node. The table
 | **Intent Handling** | **Upstream Intent + Firewall** | Sink Event Dispatch | Notifier Direct Calls | Direct Signal Mutation |
 | **Rebuild Execution** | Flutter schedules builds; components read their dependencies when building | Flutter schedules builds from BLoC state notifications | Flutter schedules builds according to provider changes | Depends on the signal and Flutter integration |
 | **Safety & Control** | **Intent Firewall + `catchDamaged`** | Runtime Try/Catch | `AsyncValue` Catch | Exception Propagation |
-| **Dynamic Hotswap** | **Native (`CoralCoupler` / `MooringPoint`)** | Manual Stream Rebind | `ref.watch` Dynamic Rebind | `effect` Re-track |
+| **Dynamic Hotswap** | **Native (`CoralCoupler`)** | Manual Stream Rebind | `ref.watch` Dynamic Rebind | `effect` Re-track |
 
 #### Key Architectural Takeaways
 

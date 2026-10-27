@@ -2,6 +2,12 @@
 // Use of this source code is governed by an Apache 2.0 license that can be
 // found in the LICENSE file.
 
+/// @docImport 'package:flutter/animation.dart';
+///
+/// Animation primitives and lifecycle controllers for Coralline.
+///
+/// Features [ResilientAnimationController], offering full [AnimationController] capabilities
+/// with state resilience and lazy engine initialization across lifecycle transitions.
 library;
 
 import 'package:coralline/coralline.dart';

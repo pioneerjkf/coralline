@@ -2,6 +2,12 @@
 // Use of this source code is governed by an Apache 2.0 license that can be
 // found in the LICENSE file.
 
+/// @docImport 'package:flutter/scheduler.dart';
+///
+/// Ticker provider mixins for Coralline components.
+///
+/// Enables non-widget [CorallineLifecycleAware] objects to create and manage [Ticker]s
+/// synchronized with Flutter's lifecycle and subtree [TickerMode].
 library;
 
 import 'package:coralline_flutter/coralline_flutter.dart';

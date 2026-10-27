@@ -25,8 +25,7 @@ This document summarizes selected APIs exported by `package:coralline/coralline.
   - `.map<R>(R Function(T) mapper)`: Synchronous transformation node.
   - `.cascade<R>(Coral<R> Function(T) cascade, {bool seal, bool hotswap, bool eager})`: 1:1 dynamic pipeline swapping node.
   - `.diverge<R>(Iterable<Coral<R>> Function(T) cascade, {bool seal, bool hotswap, bool eager})`: 1:N dynamic topological divergence node yielding a `Trunk<R>`.
-  - `.combine<O, R>(Coral<O> other, R Function(T, O) combiner)`: Combines 2 pipeline nodes.
-  - `.guard({bool Function()? canProceed})`: Adds a condition for whether the guarded computation can proceed.
+  - `.guard({required bool Function() canProceed, Object? Function()? getReasonIfCannotProceed})`: Adds a condition for whether the guarded computation can proceed.
   - `.toTerminal(onDirty)`: Connects a terminal subscriber.
   - `.toBroadcaster()`: Converts 1:1 pipeline to 1:N broadcaster node.
 
@@ -56,7 +55,7 @@ This document summarizes selected APIs exported by `package:coralline/coralline.
   - `deactivate()`: Ends observation and releases the terminal's upstream connection.
 
 ### `CoralSnapshot<T>`
-- **Role**: Immutable value wrapper with valid, empty, and damaged variants (`CoralSnapshotValid`, `CoralSnapshotEmpty`, `CoralSnapshotDamaged`).
+- **Role**: Immutable value container with valid, empty (`CoralSnapshot.empty()`), and damaged (`CoralSnapshot.damaged(error)`) states.
 
 <br><br>
 
@@ -71,8 +70,8 @@ This document summarizes selected APIs exported by `package:coralline/coralline.
 
 - `ListCoralElementsExtension`, `SetCoralElementsExtension`, `MapCoralElementsExtension`, `IterableCoralElementsExtension`: Collection pipeline utilities.
 - `FutureCoralExtension`, `FutureCollectionTrunkExtension`, `StreamCoralExtension`, `StreamControllerCoralExtension`, `StreamCollectionTrunkExtension`: Asynchronous mapping and stream integration.
-- `CoralCollectionExtension`: Combines list of coral nodes (`combineAll`).
-- `CorallineDebugExtension`: Prints ASCII DAG tree representation (`.toDebugString()`).
+- `CoralCollectionExtension`: Collection utilities (`.data`, `.toTrunk()`).
+- `CorallineDebugExtension`: Debug metadata extensions (`.debugTag`, `.debugCreationLocation`, `.debugTrace()`).
 
 <br><br>
 

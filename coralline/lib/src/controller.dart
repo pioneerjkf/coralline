@@ -31,6 +31,16 @@ part of '../coralline.dart';
 /// Unlike traditional Streams that continuously flood data payloads down the pipeline,
 /// CoralNode employs a highly efficient **Push-Dirty, Pull-Data** architecture.
 ///
+/// ## 4-Phase Flow Diagram
+/// ```text
+/// Phase 1: Injection (controller.set)
+///   │
+///   ▼
+/// Phase 2: Push-Dirty ──────────> Intermediate Nodes ──────────> Phase 3: Terminal (onDirty)
+///                                                                        │
+/// Consumer <── Return Data <──── Phase 4: Pull-Data (Lazy Eval) <────────┘
+/// ```
+///
 /// #### The 4-Phase Flow:
 ///
 /// **Phase 1: Imperative Injection (Source)**
@@ -55,6 +65,23 @@ part of '../coralline.dart';
 /// Dirty transformations are evaluated when a consumer reads their values and may be cached until
 /// an upstream change invalidates them. This can avoid work for values that are never read after
 /// an update. It does not guarantee one evaluation per frame or a particular performance result.
+///
+/// **Warning (Anti-Pattern Prevention):**
+///
+/// * **BAD (Attaching multiple independent listeners without `broadcast: true`):**
+///   ```dart
+///   // Anti-pattern: 1:1 controller attached to multiple terminals causes ownership collision
+///   final controller = CoralController<int>(0);
+///   final terminalA = controller.coral.toTerminal(() {});
+///   final terminalB = controller.coral.toTerminal(() {}); // Throws CoralNodeReleaseViolationException!
+///   ```
+/// * **GOOD (Enable `broadcast: true` when multiple downstream branches observe the source):**
+///   ```dart
+///   // Recommended: Explicitly configure broadcast when sharing across multiple listeners
+///   final controller = CoralController<int>(0, broadcast: true);
+///   final terminalA = controller.coral.toTerminal(() {});
+///   final terminalB = controller.coral.toTerminal(() {}); // Works smoothly
+///   ```
 ///
 /// **Example:**
 /// ```dart
@@ -335,6 +362,31 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
 /// **Intended Usage & Data Flow Architecture (Push-Dirty, Pull-Data):**
 /// Functions identically to [CoralController] within the Coralline framework's **Push-Dirty, Pull-Data**
 /// architecture, but operates on collections of [Coral] lines.
+///
+/// ## Bundle Dynamic Architecture Flow
+/// ```text
+/// controller.set([Coral A, Coral B, Coral C])
+///                      │
+///                      ▼
+///              [TrunkController] ──> Push Dirty ──> [Downstream Trunk Pipeline]
+///                                                            │
+/// Consumer <── Pull Lines (Unmodifiable List) <──────────────┘
+/// ```
+///
+/// **Warning (Anti-Pattern Prevention):**
+///
+/// * **BAD (Passing mutable lists that mutate externally without calling `.set`):**
+///   ```dart
+///   // Anti-pattern: Mutating the list in-place does NOT notify downstream subscribers
+///   final mutableList = <Coral<int>>[coralA];
+///   final controller = TrunkController<int>(mutableList);
+///   mutableList.add(coralB); // Downstream pipeline is unaware of this change
+///   ```
+/// * **GOOD (Always update via controller methods to propagate dirty notifications):**
+///   ```dart
+///   // Recommended: Call .set() with the new list to trigger topological updates
+///   controller.set([...controller.lines, coralB]);
+///   ```
 ///
 /// **Example:**
 /// ```dart

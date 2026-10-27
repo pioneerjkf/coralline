@@ -11,8 +11,49 @@ extension CoralBuildContextMaterialExtension on Coral<BuildContext> {
       CoralBuildContextMaterialProxy._(this);
 }
 
-/// **Core Concept (Material Proxy):**
-/// Root proxy wrapper providing access to Material Theme, ColorScheme, TextTheme, and Scaffold scopes.
+/// A proxy wrapper providing access to Material Theme, ColorScheme, TextTheme, and Scaffold scopes.
+///
+/// ## Sub-Functor & Invocation Pathways
+/// ```text
+/// ┌────────────────────────────────────────────────────────┐
+/// │             CoralBuildContextMaterialProxy             │
+/// └────────────────────────────────────────────────────────┘
+///       │                           │
+///       ▼ [.theme]                  ▼ [.scaffold]
+/// [CoralBuildContextThemeProxy]    [CoralBuildContextScaffoldProxy]
+///       │                           │
+///       ├─► .colorScheme            ├─► .messenger
+///       └─► .textTheme              └─► .state
+/// ```
+///
+/// ## Key Invariants & Architectural Benefits
+/// 1. **Structured Namespacing**: Prevents polluting Flutter's [Coral<BuildContext>] namespace with
+///    hundreds of flat getters while grouping related tokens logically.
+/// 2. **Subtree Scoping**: Efficiently extracts Material tokens without requiring manual
+///    `Theme.of(context)` calls in component build methods.
+///
+/// **Warning (Anti-Pattern Prevention):**
+/// - Avoid reading Material proxy tokens in loops without caching;
+///   cache derived proxy streams as `late final` fields in components.
+///
+/// **BAD:**
+/// ```dart
+/// // [Anti-Pattern] Ad-hoc reading of theme tokens on every build pass
+/// Widget render(Coral<BuildContext> contextCoral) {
+///   return Text('Color: ${contextCoral.material.colorScheme.data.primary}');
+/// }
+/// ```
+///
+/// **GOOD:**
+/// ```dart
+/// // [Recommended] Cache theme proxy stream as a late final field
+/// class ThemedCardComponent {
+///   ThemedCardComponent(Coral<BuildContext> contextCoral)
+///       : colors = contextCoral.material.colorScheme;
+///
+///   final Coral<ColorScheme> colors;
+/// }
+/// ```
 extension type CoralBuildContextMaterialProxy._(Coral<BuildContext> _coral) {
   /// Exposes the underlying [Coral<BuildContext>] node.
   Coral<BuildContext> get context => _coral;
