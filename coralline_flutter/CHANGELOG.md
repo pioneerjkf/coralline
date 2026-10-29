@@ -1,3 +1,9 @@
+## 0.1.7
+
+- Update `coralline` and `coralline_extensions` dependency constraints to `^0.1.5`.
+- Enable `comment_references` lint rule in `analysis_options.yaml`.
+- Align Dartdoc comments, README examples, and architecture analysis documents with the AST implementation (`ResilientAnimationController`, `CorallineBuildContextAware`, `TickerProviderCorallineLifecycleAwareMixin`, and `CorallineTerminalIntentAware`).
+
 ## 0.1.6
 
 - Update `coralline` and `coralline_extensions` dependency constraints to `^0.1.4`.

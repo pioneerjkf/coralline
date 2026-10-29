@@ -1,3 +1,9 @@
+## 0.1.5
+
+- Update `coralline` dependency constraint to `^0.1.5`.
+- Enable `comment_references` lint rule in `analysis_options.yaml`.
+- Align README and collection extension Dartdoc comments (`coral.elements.sorted`, `sortedRange`, `binarySearch`, `lowerBound`) with the AST implementation.
+
 ## 0.1.4
 
 - Update `coralline` dependency constraint to `^0.1.4`.

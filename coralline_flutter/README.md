@@ -30,8 +30,8 @@ Add `coralline_flutter` to your `pubspec.yaml`:
 dependencies:
   flutter:
     sdk: flutter
-  coralline: ^0.1.4
-  coralline_flutter: ^0.1.6
+  coralline: ^0.1.5
+  coralline_flutter: ^0.1.7
 ```
 
 Or run:

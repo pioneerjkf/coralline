@@ -1,3 +1,10 @@
+## 0.1.5
+
+### Documentation & Verification
+- Enable `comment_references` lint rule in `analysis_options.yaml` and resolve all comment reference issues across internal and public sources.
+- Align all Dartdoc comments, architecture manuals, and API reference documents with the AST implementation under the Truth Verification Protocol.
+- Correct documented method signatures, return types, and lifecycle behaviors for `Coral.computed`, `Coral.guard`, `Trunk.combine`, `Trunk.distinct`, `CorallinePipeline.toTerminal`, `CorallineElements.sorted`, `CorallineTerminal.deactivate`, and `TrunkController`.
+
 ## 0.1.4
 
 ### Documentation & Verification

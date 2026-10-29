@@ -33,8 +33,8 @@ Add `coralline` and `coralline_extensions` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  coralline: ^0.1.4
-  coralline_extensions: ^0.1.4
+  coralline: ^0.1.5
+  coralline_extensions: ^0.1.5
 ```
 
 ---
