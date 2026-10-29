@@ -284,7 +284,7 @@ base mixin _BroadcasterDeactivateSchedulerMixin on _CorallineSchedulerBase {
 /// **Example:**
 /// ```dart
 /// // Internal framework scheduling usage:
-/// _CorallineScheduler.instance.scheduleDirtyPush(dirtyPoint);
+/// _CorallineScheduler.instance._scheduleDirtyPush(dirtyPoint);
 /// ```
 base class _CorallineScheduler extends _CorallineSchedulerBase
     with _MooringSchedulerMixin, _LazyDirtyPushSchedulerMixin, _BroadcasterDeactivateSchedulerMixin {

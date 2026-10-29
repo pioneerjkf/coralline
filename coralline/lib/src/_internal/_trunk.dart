@@ -231,15 +231,15 @@ abstract base class _DynamicTrunk<T> extends _TrunklineNode<Coral<T>>
     // Architecture Note: Separation of Concerns
     //
     // DO NOT move this loop inside the `try-catch` block above.
-    // /
-    // / 1. **Final State Execution**: The `try-catch` strictly handles Topology Mutation.
-    // /    This loop must execute based on the finalized `_snapshot` state,
-    // /    whether the attachment succeeded or was rolled back to `damaged`.
-    // / 2. **Guaranteed Safety**: `_switchLifecycle...Optimistically()` is inherently
-    // /    safe and guaranteed not to throw an unhandled exception.
-    // / 3. **Preventing False Rollbacks**: If this was inside the `try` block,
-    // /    a theoretical failure in lifecycle synchronization would incorrectly
-    // /    trigger a full topology rollback, breaking the framework's intent.
+    //
+    // 1. **Final State Execution**: The `try-catch` strictly handles Topology Mutation.
+    //    This loop must execute based on the finalized `_snapshot` state,
+    //    whether the attachment succeeded or was rolled back to `damaged`.
+    // 2. **Guaranteed Safety**: `_syncLifecycleBasedOnCorallineOptimistically()` is inherently
+    //    safe and guaranteed not to throw an unhandled exception.
+    // 3. **Preventing False Rollbacks**: If this was inside the `try` block,
+    //    a theoretical failure in lifecycle synchronization would incorrectly
+    //    trigger a full topology rollback, breaking the framework's intent.
     final resolvedLines = snapshot.linesOrEmpty;
 
     for (int i = 0; i < resolvedLines.length; i++) {
@@ -276,16 +276,16 @@ abstract base class _UpdatableTrunk<T> extends _DynamicTrunk<T> {
         });
       }
 
-      /// DO NOT replace this block with [_performRelease].
-      /// 1. [_performRelease] assigns [TrunkSnapshot.empty],
-      ///    which throws an [Exception] when [TrunkSnapshot.lines] is accessed.
-      ///    Here, we assign [TrunkSnapshot] with `const []` to legitimately
-      ///    represent a valid state with 0 elements.
-      /// 2. The manual iteration above safely verifies
-      ///    `identical(e._joint, this)` before detaching.
-      /// 3. We use `const []` instead of `[]` for memory optimization.
-      ///    It reuses a single immutable empty lines instance across the app,
-      ///    avoiding unnecessary memory allocation.
+      // DO NOT replace this block with `_performRelease()`.
+      // 1. `_performRelease()` assigns `TrunkSnapshot.empty()`,
+      //    which throws an exception when `TrunkSnapshot.lines` is accessed.
+      //    Here, we assign `TrunkSnapshot` with `const []` to legitimately
+      //    represent a valid state with 0 elements.
+      // 2. The manual iteration above safely verifies
+      //    `identical(e._joint, this)` before detaching.
+      // 3. We use `const []` instead of `[]` for memory optimization.
+      //    It reuses a single immutable empty lines instance across the app,
+      //    avoiding unnecessary memory allocation.
       _snapshot = TrunkSnapshot(const []);
     } else {
       if (oldLines?.isNotEmpty ?? false) {

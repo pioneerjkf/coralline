@@ -8,12 +8,9 @@ base mixin _Trunkline<C extends CoralNode> on _Joint {
   @override
   Iterable<CoralNode> _iterateInbound() => _inbound;
 
-  /// Setup Phase Ordering (Coalescing Buffer):
+  /// Activates all inbound lines in [_inbound] before activating this joint.
   ///
-  /// Upstream nodes MUST be processed BEFORE calling `super`.
-  /// By deferring `super._activate()` to the end, this joint remains in a non-running
-  /// state (`isRunning == false`), acting as a perfect coalescing buffer (`_isDirtyPending = true`)
-  /// that safely absorbs any synchronous notification flood from the upstream nodes.
+  /// See [_Coralline._activate] for setup phase ordering and coalescing details.
   @mustCallSuper
   @override
   @pragma('vm:prefer-inline')
@@ -24,11 +21,9 @@ base mixin _Trunkline<C extends CoralNode> on _Joint {
     super._activate();
   }
 
-  /// Teardown Phase Ordering (Symmetrical Safety):
+  /// Pauses this joint before pausing all inbound lines in [_inbound].
   ///
-  /// `super` MUST be called BEFORE processing upstream nodes.
-  /// This symmetrical teardown ensures that this joint is fully turned off before
-  /// dismantling dependencies, safely ignoring any events emitted during upstream teardown.
+  /// See [_Coralline._pause] for teardown phase ordering details.
   @mustCallSuper
   @override
   @pragma('vm:prefer-inline')
@@ -39,10 +34,9 @@ base mixin _Trunkline<C extends CoralNode> on _Joint {
     }
   }
 
-  /// Setup Phase Ordering (Coalescing Buffer):
+  /// Resumes all inbound lines in [_inbound] before resuming this joint.
   ///
-  /// Like [_activate], `super._resume()` is deferred to safely absorb any
-  /// synchronous dirty notifications triggered by the resuming upstream node.
+  /// See [_Coralline._resume] for setup phase ordering details.
   @mustCallSuper
   @override
   @pragma('vm:prefer-inline')
@@ -53,11 +47,9 @@ base mixin _Trunkline<C extends CoralNode> on _Joint {
     super._resume();
   }
 
-  /// Teardown Phase Ordering (Symmetrical Safety):
+  /// Deactivates this joint before deactivating all inbound lines in [_inbound].
   ///
-  /// `super` MUST be called BEFORE processing upstream nodes.
-  /// This symmetrical teardown ensures that this joint is fully turned off before
-  /// dismantling dependencies, safely ignoring any events emitted during upstream teardown.
+  /// See [_Coralline._deactivate] for teardown phase ordering details.
   @mustCallSuper
   @override
   @pragma('vm:prefer-inline')

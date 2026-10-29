@@ -1,6 +1,6 @@
 # Coralline Quickstart & Core Concepts Guide
 
-> **"Don't write boilerplates. To handle complex pipelines, all you have to do is call a line."**
+> *Compose reactive state and lazy derivations as a pipeline of connected nodes.*
 
 Coralline is a Dart library for composing reactive pipelines and derived state. Its operators can keep common transformations concise; larger graphs still require choosing and managing their sources and dependencies.
 
@@ -14,8 +14,9 @@ A Coralline pipeline consists of 3 simple entities: **Source $\rightarrow$ Trans
 
 ```mermaid
 graph LR
-    A["CoralController<T><br/>(Imperative Source)"] -->|Push Dirty| B["Coral<T><br/>(Read-Only Lazy Pipeline)"]
-    B -->|Pull Data| C["CoralTerminal<T><br/>(UI / Destination Consumer)"]
+    A["CoralController<T> (Imperative Source)"] -->|Push Dirty| B["Coral<T> (Read-Only Lazy Pipeline)"]
+    B -->|Notify onDirty| C["CoralTerminal<T> (UI / Destination Consumer)"]
+    C -.->|Pull Data| B
 ```
 
 #### 1) `CoralController<T>` (Imperative Source)
@@ -25,13 +26,13 @@ graph LR
 
 #### 2) `Coral<T>` (Declarative Pipeline)
 - A strictly **Read-only** reactive node that cannot be modified directly from the outside.
-- Composable using operators like `.map()`, `.where()`, `.derive()`, `.cascade()`.
+- Composable using operators like `.map()`, `.distinct()`, `.cascade()`, `.diverge()`, `.fallback()`, and `.guard()`.
 - Computations stay **Strictly Lazy** until downstream explicitly requests data.
 
 #### 3) `CoralTerminal<T>` (Destination / UI Binding)
 - Positioned at the bottom (Terminal) of the pipeline to display or gather data.
 - **Parameterless `void Function() onDirty`**: The callback notifies the consumer that the pipeline changed. A consumer can schedule a rebuild and read the value separately. How updates are batched depends on the consumer; the callback alone does not guarantee frame coalescing.
-- **Mandatory Teardown (`terminal.deactivate()`)**: Always deactivate terminals inside `dispose()` or cleanup handlers to unbind upstream observers and prevent memory leaks.
+- **Mandatory Teardown (`terminal.deactivate()`)**: Always deactivate terminals inside `dispose()` or cleanup handlers to transition upstream pipeline nodes to the inactive state and release lifecycle-bound resources.
 
 <br><br>
 
@@ -43,10 +44,10 @@ Coralline uses a related separation between invalidation and later computation. 
 
 ```
 [ Phase 1: Push-Dirty ]
-controller.set(10) ---> Invalidate downstream _snapshots (lightweight notification)
+controller.set(10) ---> Invalidate downstream _snapshot caches (lightweight notification)
 
 [ Phase 2: Coalescing ]
-Repeated synchronous changes can be coalesced by the dirty-push scheduler; Flutter still controls when widgets build
+Subsequent controller.set() calls while a pull is pending (_isPullPending) are coalesced until .snapshot is read
 
 [ Phase 3: Pull-Data ]
 UI render cycle calls terminal.snapshot ---> Interrogate container (Valid/Empty/Damaged) & compute lazily
@@ -55,7 +56,7 @@ UI render cycle calls terminal.snapshot ---> Interrogate container (Valid/Empty/
 #### Synchronous and asynchronous sources
 
 Coralline supports synchronous values and async conversions. Applications can also feed results from work they run elsewhere into a controller:
-- **Synchronous In-Memory Binding** (`CoralController`, `Coral.data`): Immediately returns `Valid` snapshot; dispatches dirty signals synchronously.
+- **Synchronous In-Memory Binding** (`CoralController(initialData)`, `Coral.data`): Immediately exposes a `Valid` snapshot; controller updates dispatch dirty notifications synchronously (`CoralController.late()` starts `Empty` until its first update).
 - **Asynchronous I/O Binding** (`Future.toCoral()`, `Stream.toCoral()`): Async conversions expose results through Coralline snapshots. An empty snapshot can represent a result that is not yet available, while a damaged snapshot carries an error. Applications choose how to handle nullable payloads.
 - **Background work**: Coralline does not create or manage Dart isolates. An application can perform work in an isolate and pass the result back through a controller or another source.
 
@@ -66,6 +67,7 @@ Coralline supports synchronous values and async conversions. Applications can al
 #### Example 1: Form Field Validation Pipeline
 
 ```dart
+import 'dart:async';
 import 'package:coralline/coralline.dart';
 
 class LoginFormState {
@@ -100,10 +102,14 @@ void main() {
 }
 ```
 
-#### Example 2: Async Search & `CoralSnapshot` Pattern Matching
+#### Example 2: Async Search & `CoralSnapshot` State Handling
 
 ```dart
+import 'dart:async';
 import 'package:coralline/coralline.dart';
+
+Future<List<String>> fetchSearchResults(String query) async =>
+    ['$query Docs', '$query SDK'];
 
 void main() async {
   final queryController = CoralController<String>('');
@@ -120,7 +126,7 @@ void main() async {
       if (snapshot.isValid) {
         print('Search results: ${snapshot.data}');
       } else if (snapshot.isEmpty) {
-        print('Please enter a search query...');
+        print('Loading search results...');
       } else if (snapshot.isDamaged) {
         print('Error loading search: ${snapshot.error}');
       }

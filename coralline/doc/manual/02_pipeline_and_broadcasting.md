@@ -24,6 +24,7 @@ graph TD
 ```
 
 ```dart
+import 'dart:async';
 import 'package:coralline/coralline.dart';
 
 void main() {
@@ -50,10 +51,10 @@ void main() {
 1. **1st Subscriber Added**: Activates upstream resources and starts computing.
 2. **Subscribers Hit 0**: Gracefully deactivates upstream resources.
 
-#### Microtask Lazy Deactivation (`lazyDeactivation = true`)
+#### Microtask Lazy Deactivation (`lazyDeactivation: true`)
 During Flutter Hot Reloads or route transitions, widgets are unmounted and remounted rapidly. Deactivating resources immediately causes UI flickering and redundant re-initialization costs.
 
-Coralline can defer deactivation to a microtask. If a new branch is attached before the deferred check, the upstream pipeline can remain active. This may avoid unnecessary stop-start work; it does not guarantee flicker-free UI updates.
+Coralline can defer deactivation to a microtask (`CoralBroadcaster` defaults to `lazyDeactivation: true`). If a new branch is attached before the deferred check, the upstream pipeline can remain active. This may avoid unnecessary stop-start work; it does not guarantee flicker-free UI updates.
 
 <br><br>
 
@@ -64,13 +65,21 @@ Coralline elevates upstream nodes from passive data providers to **Pipeline Inje
 #### Simple Swapping: `CoralCoupler`
 When swapping data sources at runtime (e.g. Local DB $\rightarrow$ Remote Server API), use `CoralCoupler`:
 ```dart
-final coupler = CoralCoupler<String>(initialSourceCoral);
-late final CoralTerminal<String> terminal;
-terminal = coupler.coral.toTerminal(() => scheduleMicrotask(() => print(terminal.data)));
-terminal.activate();
+import 'dart:async';
+import 'package:coralline/coralline.dart';
 
-// Hot-swap pipeline source dynamically!
-coupler.couple(newSourceCoral);
+void main() {
+  final initialSourceCoral = Coral.data('Local Cache');
+  final newSourceCoral = Coral.data('Remote Server');
+
+  final coupler = CoralCoupler<String>(initialSourceCoral, hotswap: true);
+  late final CoralTerminal<String> terminal;
+  terminal = coupler.coral.toTerminal(() => scheduleMicrotask(() => print(terminal.data)));
+  terminal.activate();
+
+  // Hot-swap pipeline source dynamically!
+  coupler.couple(newSourceCoral);
+}
 ```
 
 #### Core Dynamic Operators (`cascade`, `diverge`, `converge`)
@@ -83,7 +92,7 @@ coupler.couple(newSourceCoral);
 
 1. **`cascade` (1:1 Dynamic Swapping)**: Swaps a single downstream `Coral<T>` pipeline in response to changes in upstream `Coral<S>` (e.g. user ID change triggering fetch).
 2. **`diverge` (1:N Dynamic Divergence)**: Evaluates single payload `S` to dynamically yield a collection of $N$ child `Coral<T>` lines bundled in a `Trunk<T>`.
-3. **`converge` (N:1 Dynamic Convergence)**: Watches an $N$-line `Trunk<S>` and aggregates them into a single downstream `Coral<T>`.
+3. **`converge` (N:1 Dynamic Convergence)**: Watches an $N$-line `Trunk<S>` and dynamically constructs and attaches a single downstream `Coral<T>` pipeline (whereas `.aggregate()` reduces the lines into a scalar value `T`).
 
 #### Diverge-Converge Diamond Topology (Split-Merge Pattern)
 Combining `diverge` and `converge` forms a Diamond Topology where a single state splits into $N$ parallel dynamic branches and merges back cleanly:
@@ -94,11 +103,11 @@ Combining `diverge` and `converge` forms a Diamond Topology where a single state
 ```
 
 #### Dirty Push Suppression
-During dynamic line swapping, secondary dirty cascades are suppressed, coalescing nested topology changes into a single downstream notification and preventing infinite cascade loops.
+During lazy dynamic line swapping, secondary dirty cascades triggered while pulling data are suppressed via `_suppressedDirtyPushCount`, coalescing nested topology changes into a single downstream notification and preventing redundant dirty loops.
 
 #### Hotswap vs Coldswap
-- **Coldswap (`hotswap: false`, default)**: Immediately disconnects old node for GC memory cleanliness.
-- **Hotswap (`hotswap: true`)**: Retains the previous node and its value until the new node completes connection, avoiding UI data gaps or transient empty frames.
+- **Coldswap (`hotswap: false`, default)**: Synchronously deactivates and detaches the old inbound node immediately upon swapping.
+- **Hotswap (`hotswap: true`)**: Attaches the discarded inbound node to an internal mooring point (`_MooringPoint`) and defers its deactivation and detachment to the end of the microtask queue, preventing premature resource teardown if shared or re-attached within the same synchronous turn.
 
 <br><br>
 
@@ -110,26 +119,27 @@ Coralline packages all pipeline data in an immutable `CoralSnapshot<T>` struct:
 - **Empty (`snapshot.isEmpty`)**: Represents an uninitialized state (`CoralSnapshot.empty()`).
 - **Damaged (`snapshot.isDamaged`)**: Computation exception state carrying `snapshot.error` and `snapshot.stackTrace`.
 
-#### 3 Defense Principles (`Guarded`, `Optimistically`, `Safely`)
-1. **`Guarded`**: Absorbs user computation errors into `CoralSnapshot.damaged` boxes gracefully.
-2. **`Optimistically`**: Framework-internal atomic topology mutations without external user logic.
-3. **`Safely`**: Catches errors during resource disposal and routes them to global error handlers.
+#### Error Isolation & Lifecycle Safety (`Guarded` & `Optimistically`)
+1. **`Guarded` (`setGuarded`, `coupleGuarded`, `_computeGuarded`)**: Captures synchronous user computation exceptions and converts them into `CoralSnapshot.damaged(error, stackTrace)` snapshots without crashing the call stack.
+2. **`Optimistically` (`_activateOptimistically`, `_deactivateOptimistically`, `_detachOptimistically`)**: Executes internal lifecycle and topology transitions while catching unexpected disposal or lifecycle errors and routing them to `CorallineTerminalIntent.handleUncaughtError` (or `Zone.current.handleUncaughtError`).
 
 <br><br>
 
 ### 5. Heterogeneous Mixed Source Synchronization & Merger Matrix
 
-Synchronous values and values supplied by async conversions can be combined through `Trunk.combine()` or `Trunk.converge()`. Coralline does not manage isolate workers; an application can supply results from its own background work as another source.
+Synchronous values and values supplied by async conversions can be combined through `Trunk.combine()`, `Trunk.aggregate()`, or `Trunk.converge()`. Coralline does not manage isolate workers; an application can supply results from its own background work as another source.
 
-| Source A (Sync) | Source B (Async I/O) | Source C (Application-managed work) | Standard Combination (`combine`) | Downstream Snapshot |
+When using `Trunk.combine()` (which extracts `.data` from every line in the bundle), uninitialized (`Empty`) or failed (`Damaged`) child lines trigger fail-fast extraction interception unless guarded by `.guard(canProceed: () => lines.areAllValid())`:
+
+| Source A (Sync) | Source B (Async I/O) | Source C (Application-managed work) | Un-guarded `combine()` Snapshot | Guarded `combine().guard(canProceed: lines.areAllValid)` |
 | :--- | :--- | :--- | :--- | :--- |
-| **Valid** | **Empty** (Pending) | **Empty** (Processing) | Execution Suspended | **`CoralSnapshot.empty()`** |
-| **Valid** | **Valid** | **Empty** (Processing) | Execution Suspended | **`CoralSnapshot.empty()`** |
-| **Valid** | **Valid** | **Valid** | Composite Evaluation | **`CoralSnapshot.data(Payload)`** |
-| **Valid** | **Damaged** | **Valid** | Fail-Fast Interception | **`CoralSnapshot.damaged(Error B)`** |
+| **Valid** | **Empty** (Pending) | **Empty** (Processing) | **`CoralSnapshot.damaged(ExtractionException)`** | **`CoralSnapshot.empty()`** |
+| **Valid** | **Valid** | **Empty** (Processing) | **`CoralSnapshot.damaged(ExtractionException)`** | **`CoralSnapshot.empty()`** |
+| **Valid** | **Valid** | **Valid** | **`CoralSnapshot(Payload)`** | **`CoralSnapshot(Payload)`** |
+| **Valid** | **Damaged** | **Valid** | **`CoralSnapshot.damaged(ExtractionException)`** | **`CoralSnapshot.empty()`** (or `damaged(reason)`) |
 
 #### Developer Freedom in Custom Aggregation (`aggregate`)
-- **Standard Bundling (`combine()`)**: Bundles data into `List<S>` when all participating lines resolve to `Valid`, following unified readiness and fail-fast interception rules.
+- **Standard Bundling (`combine()`)**: Calls `List.unmodifiable(lines.data)` to bundle values into `List<S>`. If any line is `Empty` or `Damaged`, reading `.data` throws `CoralSnapshotExtractionException`, which is caught and wrapped into `CoralSnapshot.damaged`.
 - **Custom Aggregation (`aggregate` / `converge`)**: Passes node references (`Iterable<Coral<S>> lines`) to the callback, allowing application-specific handling:
   - `lines.areAllValid()`: Compute only when every line is valid.
   - `lines.where((l) => l.isValid)`: Perform **Partial Aggregation** over currently valid lines while ignoring loading lines.
@@ -143,9 +153,12 @@ Synchronous values and values supplied by async conversions can be combined thro
 1. **State-Guarded Extraction**: Interrogate `snap.isEmpty` and `snap.isDamaged` before accessing `.data`.
 2. **Encapsulated Guard Pattern (`Coral.guard`)**: Protect lazy composite nodes by wrapping exposed coral getters:
    ```dart
-   @override
-   Coral<T> get coral => _guardCoral;
-   late final Coral<T> _guardCoral = super.coral.guard(canProceed: () => iterateInbound().areAllValid());
+   abstract base class GuardedAggregator<T> extends ComplexComputation<T> {
+     @override
+     Coral<T> get coral => _guardCoral;
+     late final Coral<T> _guardCoral =
+         super.coral.guard(canProceed: () => iterateInbound().areAllValid());
+   }
    ```
 3. **Mandatory Cleanup**: Always invoke `terminal.deactivate()` when unmounting widgets or tearing down services.
 

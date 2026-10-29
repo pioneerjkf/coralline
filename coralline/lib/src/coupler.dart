@@ -37,33 +37,51 @@ part of '../coralline.dart';
 ///
 /// **Warning (Anti-Pattern Prevention):**
 ///
-/// * **BAD (Swapping an active pipeline without `hotswap: true`):**
+/// * **BAD (Using `hotswap: false` when swapping pipelines that share upstream resources):**
 ///   ```dart
-///   // Anti-pattern: Coupler created with default hotswap: false throws when swapped while running
-///   final coupler = CoralCoupler<int>(sourceA); // hotswap: false
+///   final sourceA = Coral.data(1);
+///   final sourceB = Coral.data(2);
+///   // Coldswap (hotswap: false) synchronously deactivates and detaches sourceA immediately
+///   // during couple(sourceB), before the current microtask finishes re-wiring.
+///   final coupler = CoralCoupler<int>(sourceA, hotswap: false);
+///   final terminal = coupler.coral.toTerminal(() {});
 ///   terminal.activate();
-///   coupler.couple(sourceB); // Throws exception when swapped while active!
+///   coupler.couple(sourceB);
 ///   ```
-/// * **GOOD (Enable `hotswap: true` when runtime swapping occurs while active):**
+/// * **GOOD (Enable `hotswap: true` to defer old-node deactivation to the microtask boundary):**
 ///   ```dart
-///   // Recommended: Explicitly declare hotswap capability for running pipelines
+///   final sourceA = Coral.data(1);
+///   final sourceB = Coral.data(2);
+///   // Hotswap (hotswap: true) transfers sourceA to the internal mooring point so its
+///   // deactivation is deferred until the end of the microtask, avoiding premature teardown.
 ///   final coupler = CoralCoupler<int>(sourceA, hotswap: true);
+///   final terminal = coupler.coral.toTerminal(() {});
 ///   terminal.activate();
-///   coupler.couple(sourceB); // Seamlessly transfers activation to sourceB
+///   coupler.couple(sourceB);
 ///   ```
 ///
 /// **Implementation note:**
-/// Swapping nodes during active execution requires `hotswap: true` to be set during
-/// initialization. Attempting to couple a node strongly owned by a non-detachable parent
-/// will throw a [CoralNodeReleaseViolationException].
+/// Both `hotswap: false` (coldswap) and `hotswap: true` (hotswap) permit calling [couple]
+/// while the coupler is active. With `hotswap: false`, the outgoing node is synchronously
+/// deactivated and detached during [couple]; with `hotswap: true`, the outgoing node is
+/// held in an internal mooring queue and deactivated at the end of the microtask.
+/// If [couple] is given a node strongly owned by a non-detachable (`seal: true`) parent,
+/// the resulting [CoralNodeReleaseViolationException] is caught internally and transitions
+/// the coupler into a `damaged` state rather than crashing the caller.
 ///
-/// ## Example: Hotswapping Data Sources
+/// ## Examples
 /// ```dart
+/// class UserProfile {
+///   const UserProfile({required this.name, required this.isPremium});
+///   final String name;
+///   final bool isPremium;
+/// }
+///
 /// // 1. Define two different data sources
-/// final mockApi = Coral.data(UserProfile(name: 'Guest', isPremium: false));
-/// final liveApi = webSocketClient.stream
-///     .map((json) => UserProfile.fromJson(json))
-///     .toCoral();
+/// final mockApi = Coral.data(const UserProfile(name: 'Guest', isPremium: false));
+/// final liveApi = Stream.value(
+///   const UserProfile(name: 'Alice', isPremium: true),
+/// ).toCoral();
 ///
 /// // 2. Create a coupler starting with the mock source (Guest state)
 /// final coupler = CoralCoupler<UserProfile>(mockApi, hotswap: true);
@@ -73,9 +91,10 @@ part of '../coralline.dart';
 ///   return 'Welcome, ${profile.name}!';
 /// });
 ///
-/// // 4. Activate the pipeline (it will pull 'Guest' data)
-/// greetingPipeline.activate();
-/// print(greetingPipeline.snapshot.data); // Outputs: "Welcome, Guest!"
+/// // 4. Activate the pipeline via a terminal (it will pull 'Guest' data)
+/// final terminal = greetingPipeline.toTerminal(() {});
+/// terminal.activate();
+/// print(terminal.data); // Outputs: "Welcome, Guest!"
 ///
 /// // 5. Hotswap the source to the live API when the user logs in
 /// coupler.couple(liveApi);
@@ -83,14 +102,20 @@ part of '../coralline.dart';
 sealed class CoralCoupler<T> implements CoralProvider<T> {
   /// Creates a [CoralCoupler] with an initial [inbound] node.
   ///
+  /// * [inbound]: The initial upstream [Coral] node to attach.
   /// * [seal]: If `true`, the coupler permanently owns the attached node, and it cannot
-  ///   be detached by another coupler.
-  /// * [hotswap]: If `true`, allows swapping nodes while the coupler is actively running.
+  ///   be stolen by another coupler without first calling [decouple].
+  /// * [hotswap]: If `true`, defers deactivation and detachment of swapped-out nodes to the
+  ///   end of the current microtask via the internal mooring scheduler.
   factory CoralCoupler(Coral<T> inbound, {bool seal, bool hotswap}) = _CoralCouplerBase;
 
   /// Creates a [CoralCoupler] in a late/empty state.
   ///
-  /// The coupler will remain in an empty state until a valid node is coupled.
+  /// The coupler remains in an `empty` state until a valid node is coupled via [couple].
+  ///
+  /// * [seal]: If `true`, the coupler permanently owns any subsequently coupled node.
+  /// * [hotswap]: If `true`, defers deactivation and detachment of swapped-out nodes to the
+  ///   end of the current microtask via the internal mooring scheduler.
   factory CoralCoupler.late({bool seal, bool hotswap}) = _CoralCouplerBase.late;
 
   /// Returns whether the coupler and its downstream pipeline have been activated.
@@ -105,7 +130,7 @@ sealed class CoralCoupler<T> implements CoralProvider<T> {
   @override
   bool get isPaused;
 
-  /// Returns whether the coupler has been permanently deactivated.
+  /// Returns whether the coupler is currently in the deactivated (inactive) state.
   @override
   bool get isDeactivated;
 
@@ -121,41 +146,44 @@ sealed class CoralCoupler<T> implements CoralProvider<T> {
   /// **Core Concept (Dynamic Node Swapping):**
   /// Replaces the active upstream provider with a new one at runtime.
   ///
-  /// Returns the old inbound node that was detached, or `null` if no node was attached.
+  /// * [newInbound]: The new upstream [Coral] node to attach to this coupler.
+  ///
+  /// Returns `null` if [newInbound] is identical to the currently attached node;
+  /// otherwise returns the previously attached [Coral] node (which is an empty
+  /// sentinel node when the coupler was previously uncoupled or initialized via [CoralCoupler.late]).
   ///
   /// **Requires:**
-  /// * The [newInbound] node MUST NOT be already attached to another non-detachable (sealed)
+  /// * The [newInbound] node should not already be attached to a non-detachable (`seal: true`)
   ///   parent node or terminal.
   ///
   /// **Ensures:**
-  /// * If this coupler is currently active, the [newInbound] node is automatically activated.
-  /// * The previously attached node is decoupled and transferred to a mooring scheduler
-  ///   for safe garbage collection.
+  /// * If this coupler is currently active, [newInbound] is automatically synchronized to the coupler's lifecycle state.
+  /// * With `hotswap: false`, the outgoing node is synchronously deactivated and detached; with `hotswap: true`,
+  ///   its deactivation and detachment are deferred to the end of the microtask via the mooring scheduler.
+  /// * If attaching [newInbound] fails (for example, with a [CoralNodeReleaseViolationException] because
+  ///   [newInbound] is sealed to another parent), the exception is caught and stored as a `damaged` snapshot
+  ///   on this coupler, and the previous inbound node is returned.
   ///
-  /// **Implementation note (Ownership Constraints):**
-  /// Attempting to couple a node strongly owned by a non-detachable parent will throw a
-  /// [CoralNodeReleaseViolationException]. However, if the old parent is detachable
-  /// (e.g., another coupler with `seal: false`), the node will release itself and transfer
-  /// ownership safely to this coupler.
-  ///
-  /// ## Example
+  /// ## Examples
   /// ```dart
-  /// final oldNode = coupler.couple(newLiveApiNode);
+  /// final coupler = CoralCoupler<int>(Coral.data(1), hotswap: true);
+  /// final oldNode = coupler.couple(Coral.data(2));
   /// print('Detached: $oldNode');
   /// ```
   Coral<T>? couple(Coral<T> newInbound);
 
-  /// Swaps the inbound node safely using a callback.
+  /// Swaps the inbound node safely using a [callback].
   ///
   /// **Core Concept (Safe Swapping):**
-  /// Automatically catches and wraps any synchronous exceptions into a `damaged` state
-  /// to prevent pipeline crashes.
+  /// Automatically catches and wraps any synchronous exceptions thrown by [callback]
+  /// into a `damaged` state to prevent pipeline crashes.
   ///
-  /// ## Example
+  /// * [callback]: A function that constructs and returns the new [Coral] node to couple.
+  ///
+  /// ## Examples
   /// ```dart
-  /// coupler.coupleGuarded(() {
-  ///   return buildComplexSourceNode();
-  /// });
+  /// final coupler = CoralCoupler<int>.late(hotswap: true);
+  /// coupler.coupleGuarded(() => Coral.data(42));
   /// ```
   Coral<T>? coupleGuarded(Coral<T> Function() callback);
 
@@ -171,14 +199,19 @@ sealed class CoralCoupler<T> implements CoralProvider<T> {
   /// **Core Concept (Conditional Release):**
   /// Compares the currently attached node reference and decouples it if it matches.
   ///
+  /// * [coralNode]: The candidate node reference to compare against the currently attached inbound node.
+  ///
   /// Returns `true` if the node matched and was successfully decoupled.
   bool tryDecoupling(CoralNode coralNode);
 
-  /// Sets the coupler's state to damaged with the provided [error].
+  /// Sets the coupler's state to damaged with the provided [error] and optional [stackTrace].
   ///
   /// **Core Concept (Manual Damage Injection):**
   /// Injecting errors into the pipeline manually is useful during testing
   /// or when an external error occurs that should be reflected in the pipeline.
+  ///
+  /// * [error]: The error object to store in the coupler's damaged snapshot.
+  /// * [stackTrace]: Optional stack trace associated with [error].
   Coral<T> setError(Object error, [StackTrace? stackTrace]);
 }
 
@@ -202,13 +235,20 @@ sealed class CoralCoupler<T> implements CoralProvider<T> {
 /// safety mechanisms as [CoralCoupler].
 ///
 /// **Implementation note:**
-/// Swapping trunks during active execution requires `hotswap: true` to be set during
-/// initialization. Attempting to couple a trunk strongly owned by a non-detachable parent
-/// will throw a [CoralNodeReleaseViolationException].
+/// Both `hotswap: false` (coldswap) and `hotswap: true` (hotswap) permit calling [couple]
+/// while the coupler is active. With `hotswap: true`, deactivation of the outgoing trunk
+/// is deferred until the end of the microtask. If [couple] is given a trunk strongly owned
+/// by a non-detachable (`seal: true`) parent, the [CoralNodeReleaseViolationException] is
+/// caught internally and transitions the coupler into a `damaged` state.
 ///
-/// ## Example: Swapping Input Validation Trunks
+/// ## Examples
 /// ```dart
-/// // 1. Define two different trunk pipelines for inputs (assuming String values)
+/// final emailCoral = Coral.data('user@example.com');
+/// final passwordCoral = Coral.data('secret');
+/// final phoneCoral = Coral.data('+1234567890');
+/// final smsCodeCoral = Coral.data('123456');
+///
+/// // 1. Define two different trunk pipelines for inputs
 /// final emailTrunk = Trunk.of([emailCoral, passwordCoral]);
 /// final phoneTrunk = Trunk.of([phoneCoral, smsCodeCoral]);
 ///
@@ -219,7 +259,7 @@ sealed class CoralCoupler<T> implements CoralProvider<T> {
 /// final loginPipeline = authCoupler.aggregate((lines) {
 ///   final id = lines.first.snapshot.data;
 ///   final secret = lines.last.snapshot.data;
-///   return submitLogin(id, secret);
+///   return '$id:$secret';
 /// });
 ///
 /// // 4. Later, swap to the phone authentication trunk dynamically
@@ -228,14 +268,20 @@ sealed class CoralCoupler<T> implements CoralProvider<T> {
 sealed class TrunkCoupler<T> implements TrunkProvider<T> {
   /// Creates a [TrunkCoupler] with an initial [inbound] group.
   ///
+  /// * [inbound]: The initial upstream [Trunk] group to attach.
   /// * [seal]: If `true`, the coupler permanently owns the attached group, and it
-  ///   cannot be detached by another coupler.
-  /// * [hotswap]: If `true`, allows swapping groups while the coupler is actively running.
+  ///   cannot be stolen by another coupler without first calling [decouple].
+  /// * [hotswap]: If `true`, defers deactivation and detachment of swapped-out groups to the
+  ///   end of the current microtask via the internal mooring scheduler.
   factory TrunkCoupler(Trunk<T> inbound, {bool seal, bool hotswap}) = _TrunkCouplerBase;
 
   /// Creates a [TrunkCoupler] in a late/empty state.
   ///
-  /// The coupler will remain in an empty state until a valid group is coupled.
+  /// The coupler remains in an `empty` state until a valid group is coupled via [couple].
+  ///
+  /// * [seal]: If `true`, the coupler permanently owns any subsequently coupled group.
+  /// * [hotswap]: If `true`, defers deactivation and detachment of swapped-out groups to the
+  ///   end of the current microtask via the internal mooring scheduler.
   factory TrunkCoupler.late({bool seal, bool hotswap}) = _TrunkCouplerBase.late;
 
   /// Whether the coupler and its downstream pipeline have been activated.
@@ -250,7 +296,7 @@ sealed class TrunkCoupler<T> implements TrunkProvider<T> {
   @override
   bool get isPaused;
 
-  /// Whether the coupler has been permanently deactivated.
+  /// Whether the coupler is currently in the deactivated (inactive) state.
   @override
   bool get isDeactivated;
 
@@ -266,41 +312,44 @@ sealed class TrunkCoupler<T> implements TrunkProvider<T> {
   /// **Core Concept (Dynamic Node Swapping):**
   /// Replaces the active upstream provider group with a new one at runtime.
   ///
-  /// Returns the old inbound group that was detached, or `null` if no group was attached.
+  /// * [newInbound]: The new upstream [Trunk] group to attach to this coupler.
+  ///
+  /// Returns `null` if [newInbound] is identical to the currently attached group;
+  /// otherwise returns the previously attached [Trunk] group (which is an empty
+  /// sentinel trunk when the coupler was previously uncoupled or initialized via [TrunkCoupler.late]).
   ///
   /// **Requires:**
-  /// * The [newInbound] group MUST NOT be already attached to another non-detachable
-  ///   (sealed) parent node or terminal.
+  /// * The [newInbound] group should not already be attached to a non-detachable
+  ///   (`seal: true`) parent node or terminal.
   ///
   /// **Ensures:**
-  /// * If this coupler is currently active, the [newInbound] group is automatically activated.
-  /// * The previously attached group is decoupled and transferred to a mooring scheduler
-  ///   for safe garbage collection.
+  /// * If this coupler is currently active, [newInbound] is automatically synchronized to the coupler's lifecycle state.
+  /// * With `hotswap: false`, the outgoing group is synchronously deactivated and detached; with `hotswap: true`,
+  ///   its deactivation and detachment are deferred to the end of the microtask via the mooring scheduler.
+  /// * If attaching [newInbound] fails (for example, with a [CoralNodeReleaseViolationException] because
+  ///   [newInbound] is sealed to another parent), the exception is caught and stored as a `damaged` snapshot
+  ///   on this coupler, and the previous inbound group is returned.
   ///
-  /// **Implementation note (Ownership Constraints):**
-  /// Attempting to couple a group strongly owned by a non-detachable parent will throw a
-  /// [CoralNodeReleaseViolationException]. However, if the old parent is detachable
-  /// (e.g., another coupler with `seal: false`), the group will release itself and transfer
-  /// ownership safely to this coupler.
-  ///
-  /// ## Example
+  /// ## Examples
   /// ```dart
-  /// final oldGroup = trunkCoupler.couple(newFormValidationTrunk);
+  /// final trunkCoupler = TrunkCoupler<int>(Trunk.of([Coral.data(1)]), hotswap: true);
+  /// final oldGroup = trunkCoupler.couple(Trunk.of([Coral.data(2)]));
   /// print('Detached: $oldGroup');
   /// ```
   Trunk<T>? couple(Trunk<T> newInbound);
 
-  /// Safely swaps the inbound group using a callback.
+  /// Safely swaps the inbound group using a [callback].
   ///
   /// **Core Concept (Safe Swapping):**
-  /// Automatically catches and wraps any synchronous exceptions into a `damaged` state
-  /// to prevent pipeline crashes.
+  /// Automatically catches and wraps any synchronous exceptions thrown by [callback]
+  /// into a `damaged` state to prevent pipeline crashes.
   ///
-  /// ## Example
+  /// * [callback]: A function that constructs and returns the new [Trunk] group to couple.
+  ///
+  /// ## Examples
   /// ```dart
-  /// trunkCoupler.coupleGuarded(() {
-  ///   return buildComplexFormTrunk();
-  /// });
+  /// final trunkCoupler = TrunkCoupler<int>.late(hotswap: true);
+  /// trunkCoupler.coupleGuarded(() => Trunk.of([Coral.data(1)]));
   /// ```
   Trunk<T>? coupleGuarded(Trunk<T> Function() callback);
 
@@ -316,13 +365,18 @@ sealed class TrunkCoupler<T> implements TrunkProvider<T> {
   /// **Core Concept (Conditional Release):**
   /// Compares the currently attached node reference and decouples it if it matches.
   ///
+  /// * [coralNode]: The candidate node reference to compare against the currently attached inbound group.
+  ///
   /// Returns `true` if the node matched and was successfully decoupled.
   bool tryDecoupling(CoralNode coralNode);
 
-  /// Forcibly sets the coupler's state to damaged with the provided [error].
+  /// Forcibly sets the coupler's state to damaged with the provided [error] and optional [stackTrace].
   ///
   /// **Core Concept (Manual Damage Injection):**
   /// Injecting errors into the pipeline manually is useful during testing
   /// or when an external error occurs that should be reflected in the pipeline.
+  ///
+  /// * [error]: The error object to store in the coupler's damaged snapshot.
+  /// * [stackTrace]: Optional stack trace associated with [error].
   Trunk<T> setError(Object error, [StackTrace? stackTrace]);
 }

@@ -13,19 +13,19 @@
 /// State Mutation (Source)
 ///        │
 ///        ▼
-/// [CoralController] ──> Push Dirty Signal (O(1) Mark Dirty) ──> [CoralNode Graph]
-///                                                                      │
-/// External Consumer <── Pull Data (Lazy Synchronous Value) <───────────┘
+/// [CoralController] ──> Push Dirty Signal (Mark Dirty) ──> [CoralNode Graph]
+///                                                                 │
+/// External Consumer <── Pull Data (Lazy Synchronous Value) <──────┘
 /// ```
 ///
 /// ## Core Subsystems
 /// - **Reactive Units**: [Coral] (atomic/single-value reactive signal) and [Trunk] (composite multi-line bundle).
 /// - **Imperative Sources**: [CoralController] and [TrunkController] for injecting state changes into the graph.
-/// - **Distribution & Swapping**: [CoralBroadcaster] for 1:N multi-subscriber fan-out and [CoralCoupler] for runtime node swapping.
+/// - **Distribution & Swapping**: [CoralBroadcaster] for 1:N multi-subscriber fan-out, and [CoralCoupler] and [TrunkCoupler] for runtime node swapping.
 /// - **Terminal Endpoints**: [CoralTerminal] and [TrunkTerminal] for connecting external consumers and managing lifecycle.
 /// - **State Encapsulation**: [CoralSnapshot], [TrunkSnapshot], and [CorallineSnapshot] for fail-fast, null-safe payload boxing.
-/// - **Element Collections**: [CoralIterableElements], [CoralListElements], [CoralSetElements], and [CoralMapElements].
-/// - **Async Adapters**: [FutureCoralExtension], [StreamCoralExtension], and [StreamControllerCoralExtension].
+/// - **Element Collections**: [CoralIterableElements], [CoralKeyedIterableElements], [CoralListElements], [CoralSetElements], and [CoralMapElements].
+/// - **Async Adapters**: [FutureCoralExtension], [FutureCollectionTrunkExtension], [StreamCoralExtension], [StreamControllerCoralExtension], and [StreamCollectionTrunkExtension].
 library;
 
 import 'dart:async';

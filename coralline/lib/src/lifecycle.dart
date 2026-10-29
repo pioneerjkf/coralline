@@ -5,7 +5,7 @@
 part of '../coralline.dart';
 
 /// A status interface representing the current lifecycle state of a
-/// [CoralNode] node.
+/// [CoralNode].
 ///
 /// **Core Concept (Lifecycle Observability):**
 /// Provides a read-only view into the reactive lifecycle state of any node in the
@@ -26,6 +26,6 @@ abstract interface class CorallineLifecycleStatus {
   /// Whether the node is temporarily paused.
   bool get isPaused;
 
-  /// Whether the node has been permanently deactivated.
+  /// Whether the node is currently in the deactivated (inactive) state.
   bool get isDeactivated;
 }

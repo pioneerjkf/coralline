@@ -64,10 +64,18 @@ part of '../coralline.dart';
 /// ```
 @immutable
 sealed class CoralSnapshot<T> extends CorallineSnapshot {
+  /// Creates a valid [CoralSnapshot] encapsulating [data].
+  ///
+  /// * [data]: The payload value held by this snapshot (may be `null` if `T` is nullable).
   const factory CoralSnapshot(T data) = _CoralSnapshot;
 
+  /// Creates a damaged [CoralSnapshot] encapsulating [error] and optional [stackTrace].
+  ///
+  /// * [error]: The error or exception cause for this damaged state.
+  /// * [stackTrace]: Optional stack trace associated with [error].
   const factory CoralSnapshot.damaged(Object error, [StackTrace? stackTrace]) = _DamagedCoralSnapshot;
 
+  /// Creates an uninitialized (`empty`) [CoralSnapshot].
   const factory CoralSnapshot.empty() = _EmptyCoralSnapshot;
 
   /// Extracts the underlying data synchronously from this node's snapshot.
@@ -82,15 +90,16 @@ sealed class CoralSnapshot<T> extends CorallineSnapshot {
   /// cascading and polluting downstream operations. If the node state might not be
   /// valid, explicitly handle it using [dataOrNull] or [dataOrElse].
   ///
-  /// **Preconditions:**
-  /// * The snapshot must be in a [isValid] state.
+  /// **Requires:**
+  /// * The snapshot must be in an [isValid] state.
   ///
   /// **Throws:**
-  /// * [CoralSnapshotExtractionException] if [isValid] is false (i.e., [isEmpty] or
-  ///   [isDamaged] is true).
+  /// * [CoralSnapshotExtractionException] if [isValid] is `false` (i.e., [isEmpty] or
+  ///   [isDamaged] is `true`).
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
+  /// final snapshot = CoralSnapshot<int>(42);
   /// if (snapshot.isValid) {
   ///   final val = snapshot.data;
   ///   print('Data: $val');
@@ -106,11 +115,12 @@ sealed class CoralSnapshot<T> extends CorallineSnapshot {
   /// error is expected and can be gracefully handled with null-safety operators.
   ///
   /// **Ensures:**
-  /// * Returns `null` if [isValid] is false.
+  /// * Returns `null` if [isValid] is `false`.
   /// * Otherwise, returns the non-null (or nullable if type `T` is nullable) data payload.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
+  /// final snapshot = CoralSnapshot<int>.empty();
   /// final value = snapshot.dataOrNull;
   /// if (value != null) {
   ///   print('Received value: $value');
@@ -127,12 +137,15 @@ sealed class CoralSnapshot<T> extends CorallineSnapshot {
   /// a fallback generator function. This allows pipelines to continue computing with
   /// default/mock data without breaking.
   ///
+  /// * [fallback]: Callback invoked to produce a replacement value when [isValid] is `false`.
+  ///
   /// **Ensures:**
-  /// * Returns the underlying data if [isValid] is true.
+  /// * Returns the underlying data if [isValid] is `true`.
   /// * Otherwise, invokes and returns the result of [fallback].
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
+  /// final snapshot = CoralSnapshot<String>.empty();
   /// final value = snapshot.dataOrElse(() => 'Default Value');
   /// print('Result: $value');
   /// ```
@@ -188,7 +201,7 @@ sealed class CoralSnapshot<T> extends CorallineSnapshot {
 
   /// Extracts the underlying exception or failure object from a damaged snapshot.
   ///
-  /// **Preconditions:**
+  /// **Requires:**
   /// * Must only be called when [isDamaged] is `true`.
   ///
   /// **Throws:**
@@ -198,7 +211,7 @@ sealed class CoralSnapshot<T> extends CorallineSnapshot {
 
   /// Extracts the call stack trace at the point of failure from a damaged snapshot.
   ///
-  /// **Preconditions:**
+  /// **Requires:**
   /// * Must only be called when [isDamaged] is `true`.
   ///
   /// **Throws:**
@@ -208,13 +221,16 @@ sealed class CoralSnapshot<T> extends CorallineSnapshot {
 
   /// Determines if this snapshot is equivalent to [other] by comparing their validity
   /// and underlying payloads.
+  ///
+  /// * [other]: The snapshot to compare against this snapshot.
+  /// * [equals]: Optional custom equality predicate for comparing two valid payloads.
   bool isEquivalent(covariant CoralSnapshot<T> other, [bool Function(T previous, T next)? equals]);
 }
 
 /// A mixin that forwards all [CoralSnapshot] properties and accessors directly to the implementing class.
 ///
 /// **Core Concept (Snapshot Delegation):**
-/// Similar to `TrunkSnapshotDelegator`, this mixin drastically reduces boilerplate
+/// Similar to [TrunkSnapshotDelegator], this mixin drastically reduces boilerplate
 /// by allowing nodes to expose their snapshot properties (like [isValid], [data])
 /// directly on the instance (e.g., `coral.data` instead of `coral.snapshot.data`).
 mixin CoralSnapshotDelegator<T> implements CorallineSnapshotDelegator<CoralSnapshot<T>> {
@@ -233,14 +249,22 @@ mixin CoralSnapshotDelegator<T> implements CorallineSnapshotDelegator<CoralSnaps
   @pragma('vm:prefer-inline')
   bool get isValid => snapshot.isValid;
 
+  /// Extracts the underlying data synchronously from [snapshot].
+  ///
   /// See [CoralSnapshot.data] for details.
   @pragma('vm:prefer-inline')
   T get data => snapshot.data;
 
+  /// Safely extracts the underlying data from [snapshot], or returns `null` if invalid.
+  ///
   /// See [CoralSnapshot.dataOrNull] for details.
   @pragma('vm:prefer-inline')
   T? get dataOrNull => snapshot.dataOrNull;
 
+  /// Safely extracts the underlying data from [snapshot], or returns the result of [fallback] if invalid.
+  ///
+  /// * [fallback]: Callback invoked to produce a replacement value when [isValid] is `false`.
+  ///
   /// See [CoralSnapshot.dataOrElse] for details.
   @pragma('vm:prefer-inline')
   T dataOrElse(T Function() fallback) => snapshot.dataOrElse(fallback);
@@ -273,17 +297,19 @@ mixin CoralSnapshotDelegator<T> implements CorallineSnapshotDelegator<CoralSnaps
 ///
 /// **Warning (Anti-Pattern Prevention):**
 ///
-/// * **BAD (Repeatedly allocating pipelines in build loops/methods):**
+/// * **BAD (Repeatedly allocating pipelines in render/read methods):**
 ///   ```dart
-///   // Anti-pattern: Instantiating transformation nodes inside high-frequency build cycles
-///   Widget build(BuildContext context) {
-///     final doubledCoral = counterCoral.map((count) => count * 2); // Leaks and re-creates nodes on every build
-///     return Text('${doubledCoral.data}');
+///   final counterCoral = Coral.data(1);
+///   // Anti-pattern: Instantiating transformation nodes inside high-frequency read cycles
+///   String renderCounter() {
+///     final doubledCoral = counterCoral.map((count) => count * 2); // Re-creates nodes on every call
+///     return '${doubledCoral.data}';
 ///   }
 ///   ```
 /// * **GOOD (Declare pipeline topology once and observe reactively):**
 ///   ```dart
-///   // Recommended: Declare the derived pipeline once in a state or component class
+///   final counterCoral = Coral.data(1);
+///   // Recommended: Declare the derived pipeline once and read from the same node
 ///   late final Coral<int> doubledCoral = counterCoral.map((count) => count * 2);
 ///   ```
 ///
@@ -291,7 +317,7 @@ mixin CoralSnapshotDelegator<T> implements CorallineSnapshotDelegator<CoralSnaps
 /// By extending [CoralNode], [Coral] fully integrates into the topological lifecycle.
 /// It knows when it has active listeners and when it is dormant. This allows it to
 /// lazily allocate or release resources only when necessary. The data transformation
-/// (mapping, deriving) only occurs when a terminal node explicitly pulls the data,
+/// (mapping, cascading) only occurs when a terminal node explicitly pulls the data,
 /// guaranteeing optimal execution.
 ///
 /// **Leaf Node Factories Overview:**
@@ -302,53 +328,54 @@ mixin CoralSnapshotDelegator<T> implements CorallineSnapshotDelegator<CoralSnaps
 /// - **[Coral.resource]**: Creates a dynamic node binding resource creation and cleanup to the topological lifecycle.
 ///
 /// **Implementation note (Lifecycle Management):**
-/// Coral operators (e.g., [map], [CoralKeyedIterableElements.map], [CoralKeyedIterableElements.diverge]) are designed purely for
+/// Value-mapping operators (e.g., [CoralComputationExtension.map], [CoralKeyedIterableElements.map]) are designed purely for
 /// **data transformation** in the middle of the pipeline. They do **not** assume
-/// ownership of the objects they instantiate, and will **not** automatically call
+/// topological ownership of the objects they instantiate, and will **not** automatically call
 /// `dispose` or `cancel` on them when evicted or cleared.
 ///
-/// In `Coralline`, resource disposal is strictly pushed to the **edges (endpoints)**
-/// of the topological graph. If you need to manage stateful resources that require
-/// explicit cleanup (like `StreamController` or `Timer`), you must handle their
-/// lifecycle at the endpoints:
+/// In `Coralline`, resource disposal is strictly managed through **topological node lifecycles**:
 /// 1. **Using [Coral.resource] (Source Edge)**: Provides a built-in `dispose` callback
 ///    that triggers when the node deactivates.
-/// 2. **Using a `CoralController` (Source Edge)**: Manage and dispose of resources
-///    manually within its `deactivate` lifecycle hook.
-/// 3. Resource Cleanup Support (`map`, `keyed.diverge`):
-///    When converting objects using stateful nodes, developers must be careful not to
-///    leak resources. Coralline provides operators like [map] and
-///    [CoralKeyedIterableElements.diverge] to generate and return a new [Coral.resource]. The framework will
-///    automatically call its `dispose` callback when the returned node is evicted or
-///    loses its downstream listeners (deactivates).
+/// 2. **Using a [CoralController] (Source Edge)**: Manage and dispose of resources
+///    manually within its `onDeactivated` lifecycle hook.
+/// 3. **Topological Branching (`cascade`, `diverge`, `keyed.diverge`, `converge`)**:
+///    When dynamically constructing child nodes that wrap stateful resources, use topological
+///    branching operators ([CoralComputationExtension.cascade], [CoralComputationExtension.diverge],
+///    [CoralKeyedIterableElements.diverge], or [TrunkComputationExtension.converge]) to return a
+///    [Coral.resource]. The framework attaches the returned node to the graph and automatically
+///    invokes its `dispose` callback when the branch is swapped out, evicted, or deactivated.
 sealed class Coral<T> extends CoralNode with CoralSnapshotDelegator<T> {
   /// Creates a static, instant leaf node holding a valid [data] payload.
+  ///
+  /// * [data]: The static value payload encapsulated by this node.
   ///
   /// **Core Concept & Purpose:**
   /// Represents a static, immutable source leaf node in the reactive topology that carries a valid
   /// [CoralSnapshot] with data `T`. It allows developers to inject constant values or mock state
-  /// into a pipeline without the overhead of creating a full `CoralController`.
+  /// into a pipeline without the overhead of creating a full [CoralController].
   ///
   /// **Design Philosophy & Architectural Benefits:**
   /// 1. **Zero Controller Overhead:** Avoids creating event controllers, stream subscriptions, or
   ///    listener registration allocations. Internally wraps [data] in a lightweight, static snapshot node.
   /// 2. **Pipeline Composability:** Seamlessly chains with downstream operators (`map`, `cascade`, `combine`)
-  ///    and UI components (`CoralWidget`) with identical syntax as dynamic nodes.
+  ///    and terminals with identical syntax as dynamic nodes.
   ///
   /// **Use Cases:**
   /// * **Constant / Static Value Injection:** Inject constant settings, titles, or static configuration into a pipeline:
   ///   ```dart
-  ///   final staticTitleCoral = Coral.data("Dashboard");
+  ///   final staticTitleCoral = Coral.data('Dashboard');
   ///   ```
   /// * **Conditional Dynamic vs. Static Resolution:** Return a static value when data is known locally:
   ///   ```dart
+  ///   Coral<String> fetchTitleFromNetwork() => Coral.data('Remote Dashboard');
+  ///
   ///   Coral<String> resolveTitle(String? customTitle) {
   ///     return customTitle != null ? Coral.data(customTitle) : fetchTitleFromNetwork();
   ///   }
   ///   ```
   /// * **Testing & Mock Fixtures:** Provide fixed test fixtures in unit and widget tests:
   ///   ```dart
-  ///   final mockUserCoral = Coral.data(User(id: 1, name: 'Alice'));
+  ///   final mockUserCoral = Coral.data((id: 1, name: 'Alice'));
   ///   ```
   factory Coral.data(T data) = _InstantCoral;
 
@@ -367,18 +394,19 @@ sealed class Coral<T> extends CoralNode with CoralSnapshotDelegator<T> {
   /// **Use Cases:**
   /// * **Late Controllers & Dynamic Sockets:** Initial state for late controllers or dynamic couplers before coupling a data source:
   ///   ```dart
-  ///   final controller = CoralController<UserSession>.late(); // Starts in Coral.empty() state
-  ///   final coupler = CoralCoupler<UserSession>.late(); // Starts in Coral.empty() state
+  ///   final controller = CoralController<String>.late(); // Starts in Coral.empty() state
+  ///   final coupler = CoralCoupler<String>.late(); // Starts in Coral.empty() state
   ///   ```
-  /// * **Lazy Loading & Placeholder UI Routing:** Render loading indicators or placeholders when empty:
+  /// * **Lazy Loading & Placeholder Routing:** Render loading indicators or placeholders when empty:
   ///   ```dart
-  ///   Widget buildUI(CoralSnapshot<UserData> snapshot) {
-  ///     if (snapshot.isEmpty) return const CircularProgressIndicator();
-  ///     return Text(snapshot.data.name);
+  ///   String renderStatus(CoralSnapshot<String> snapshot) {
+  ///     if (snapshot.isEmpty) return 'Loading...';
+  ///     return snapshot.data;
   ///   }
   ///   ```
   /// * **Pipeline Resets on Lifecycle Events:** Reset user state safely upon logout:
   ///   ```dart
+  ///   final userCoupler = CoralCoupler<String>(Coral.data('Alice'), hotswap: true);
   ///   userCoupler.couple(Coral.empty()); // Safely reset pipeline state on logout
   ///   ```
   factory Coral.empty() = _InstantCoral.empty;
@@ -395,23 +423,24 @@ sealed class Coral<T> extends CoralNode with CoralSnapshotDelegator<T> {
   /// **Design Philosophy & Architectural Benefits:**
   /// 1. **Declarative Error Containment:** Isolates failures without crashing the application thread. Damaged nodes
   ///    cascade downstream dirty signals, allowing terminals and UI components to safely render fallbacks.
-  /// 2. **Error Pipeline Integration:** Integrates seamlessly with `CoralWidget.errorBuilder` and `toTerminal` handlers.
+  /// 2. **Error Pipeline Integration:** Integrates seamlessly with [CoralComputationExtension.fallback] and terminal error handlers.
   ///
   /// **Use Cases:**
   /// * **Declarative Failure Return:** Explicitly return an error state from input validation or parsing:
   ///   ```dart
-  ///   Coral<Data> parseInput(String raw) {
-  ///     if (raw.isEmpty) return Coral.damaged(FormatException('Input cannot be empty'));
-  ///     return Coral.data(Data.parse(raw));
+  ///   Coral<int> parseInput(String raw) {
+  ///     if (raw.isEmpty) return Coral.damaged(const FormatException('Input cannot be empty'));
+  ///     return Coral.data(int.parse(raw));
   ///   }
   ///   ```
   /// * **Manual Coupler Error Injection:** Inject network or API errors directly into dynamic couplers:
   ///   ```dart
-  ///   userCoupler.setError(NetworkTimeoutException());
+  ///   final userCoupler = CoralCoupler<String>.late();
+  ///   userCoupler.setError(StateError('Network timeout'));
   ///   ```
-  /// * **UI Fallback & Error Rendering Verification:** Test and verify `CoralWidget.errorBuilder` fallbacks in UI:
+  /// * **Fallback & Error Rendering Verification:** Test and verify error fallbacks:
   ///   ```dart
-  ///   final errorCoral = Coral.damaged(ServerMaintenanceException());
+  ///   final errorCoral = Coral<String>.damaged(StateError('Server under maintenance'));
   ///   ```
   factory Coral.damaged(Object error, [StackTrace? stackTrace]) = _InstantCoral.damaged;
 
@@ -424,39 +453,23 @@ sealed class Coral<T> extends CoralNode with CoralSnapshotDelegator<T> {
   /// * [create] MUST return the valid `T` data and is invoked when the node becomes active.
   /// * [dispose] is invoked when the node deactivates, ensuring the previously created data is properly cleaned up.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
-  /// // 1. Safely manage an HTTP client for a streaming connection
-  /// final httpClientCoral = Coral.resource(
-  ///   create: () => HttpClient(),
-  ///   dispose: (client) => client.close(force: true),
+  /// class EventClient {
+  ///   Stream<String> connect(Uri uri) => Stream.value('event:$uri');
+  ///   void close() {}
+  /// }
+  ///
+  /// // Safely manage a client resource for a streaming connection
+  /// final clientCoral = Coral.resource(
+  ///   create: () => EventClient(),
+  ///   dispose: (client) => client.close(),
   /// );
   ///
-  /// // Fetch the HTTP response asynchronously, then cascade to convert
-  /// // the resulting byte Stream into a reactive Coral node.
-  /// final streamCoral = httpClientCoral.cascade((client) {
-  ///   final responseFuture = client.getUrl(Uri.parse('https://api.example.com/stream'))
-  ///       .then((request) => request.close());
-  ///
-  ///   return responseFuture.toCoral().cascade(
-  ///     (responseStream) => responseStream.toCoral(),
-  ///   );
-  /// });
-  ///
-  /// // 2. Asynchronously open a file, resolve the Future into a file handle,
-  /// // and then asynchronously read a chunk of data, all within a reactive pipeline.
-  /// final fileFutureCoral = Coral.resource(
-  ///   create: () => File('data.txt').open(mode: FileMode.read),
-  ///   dispose: (fileFuture) => fileFuture.then((file) => file.close()),
+  /// // Cascade the active client into a reactive Stream Coral node
+  /// final streamCoral = clientCoral.cascade(
+  ///   (client) => client.connect(Uri.parse('https://api.example.com/stream')).toCoral(),
   /// );
-  ///
-  /// // The resulting contentCoral has type Coral<Uint8List>,
-  /// // cleanly abstracting away all intermediate Futures.
-  /// final Coral<Uint8List> contentCoral = fileFutureCoral
-  ///   // Cascade 1: Convert the Future<RandomAccessFile> into a reactive Coral
-  ///   .cascade((fileFuture) => fileFuture.toCoral())
-  ///   // Cascade 2: Read from the resolved file, converting the new Future into a Coral
-  ///   .cascade((file) => file.read(1024).toCoral());
   /// ```
   factory Coral.resource({required T Function() create, required void Function(T resource) dispose}) = _ResourceCoral;
 
@@ -472,7 +485,7 @@ sealed class Coral<T> extends CoralNode with CoralSnapshotDelegator<T> {
   @override
   bool get isPaused;
 
-  /// Whether this pipeline node has been permanently deactivated.
+  /// Whether this pipeline node is currently in the deactivated (inactive) state.
   @override
   bool get isDeactivated;
 
@@ -492,54 +505,70 @@ sealed class Coral<T> extends CoralNode with CoralSnapshotDelegator<T> {
   @override
   bool get isValid;
 
+  /// Extracts the underlying data synchronously from this node's [snapshot].
+  ///
   /// See [CoralSnapshot.data] for details.
   @override
   T get data;
 
+  /// Safely extracts the underlying data from this node's [snapshot], or returns `null` if invalid.
+  ///
   /// See [CoralSnapshot.dataOrNull] for details.
   @override
   T? get dataOrNull;
 
+  /// Safely extracts the underlying data from this node's [snapshot], or returns the result of [fallback] if invalid.
+  ///
+  /// * [fallback]: Callback invoked to produce a replacement value when [isValid] is `false`.
+  ///
   /// See [CoralSnapshot.dataOrElse] for details.
   @override
   T dataOrElse(T Function() fallback);
 
+  /// Extracts the error object from this node's [snapshot] when [isDamaged] is `true`.
+  ///
   /// See [CoralSnapshot.error] for details.
   @override
   Object get error;
 
+  /// Extracts the stack trace from this node's [snapshot] when [isDamaged] is `true`.
+  ///
   /// See [CoralSnapshot.stackTrace] for details.
   @override
   StackTrace get stackTrace;
 }
 
+/// A read-only provider interface that exposes a reactive [Coral] node and its [CorallineLifecycleStatus].
 abstract interface class CoralProvider<T> implements CorallineLifecycleStatus {
   /// Creates a static, lightweight [CoralProvider] holding a fixed [data] payload.
   ///
+  /// * [data]: The static value payload encapsulated by this provider.
+  ///
   /// **Core Concept & Purpose:**
   /// Encapsulates static, immutable data into the [CoralProvider<T>] interface specification
-  /// without needing a `CoralController`.
+  /// without needing a [CoralController].
   ///
   /// **Design Philosophy & Architectural Benefits:**
   /// 1. **Zero Controller Overhead:** Avoids creating event controllers or stream subscription
   ///    allocations. Internally wraps [data] in a lightweight, static snapshot node.
-  /// 2. **API Uniformity & Decoupling:** Allows downstream consumers (e.g., `coralOf<T>()` or
-  ///    components) to consume state with identical syntax regardless of whether the state is
-  ///    static or driven by a dynamic controller.
+  /// 2. **API Uniformity & Decoupling:** Allows downstream consumers to consume state with identical
+  ///    syntax regardless of whether the state is static or driven by a dynamic controller.
   ///
   /// **Use Cases:**
-  /// * **Static App Configuration & Themes:** Inject constant settings or theme objects into the widget tree:
+  /// * **Static App Configuration & Themes:** Inject constant settings or configuration objects:
   ///   ```dart
-  ///   final appConfigProvider = CoralProvider.data(AppConfig(env: 'production'));
+  ///   final appConfigProvider = CoralProvider.data((env: 'production'));
   ///   ```
-  /// * **Testing & Mocking:** Supply constant test fixtures in widget tests without setting up controllers:
+  /// * **Testing & Mocking:** Supply constant test fixtures without setting up controllers:
   ///   ```dart
-  ///   final mockUserProvider = CoralProvider.data(UserSession(name: 'TestUser'));
+  ///   final mockUserProvider = CoralProvider.data((name: 'TestUser'));
   ///   ```
   /// * **Default Fallback Providers:** Supply default static fallbacks when optional providers are omitted.
   factory CoralProvider.data(T data) = _InstantCoralProvider.data;
 
   /// Creates a [CoralProvider] by wrapping an existing [coral] reactive pipeline.
+  ///
+  /// * [coral]: The reactive [Coral] node to wrap in this read-only provider.
   ///
   /// **Core Concept & Purpose:**
   /// Promotes any arbitrary [Coral<T>] node—such as a transformed operator pipeline (`map`, `cascade`),
@@ -555,50 +584,50 @@ abstract interface class CoralProvider<T> implements CorallineLifecycleStatus {
   /// **Use Cases:**
   /// * **Derived / Computed State Providers:** Expose transformed pipelines as providers:
   ///   ```dart
+  ///   final rawCounterCoral = Coral.data(1);
   ///   final formattedProvider = CoralProvider.coral(
   ///     rawCounterCoral.map((count) => 'Count: $count'),
   ///   );
   ///   ```
-  /// * **Resource Node Providers:** Wrap lifecycle-managed resources (e.g., WebSocket, HTTP streams):
+  /// * **Resource Node Providers:** Wrap lifecycle-managed resources:
   ///   ```dart
-  ///   final socketProvider = CoralProvider.coral(
-  ///     Coral.resource(create: () => connectSocket(), dispose: (s) => s.close()),
+  ///   final resourceProvider = CoralProvider.coral(
+  ///     Coral.resource(create: () => <String>[], dispose: (list) => list.clear()),
   ///   );
   ///   ```
-  /// * **Read-Only ViewModel State Exposure:** Expose internal controller state as a read-only provider to the UI.
+  /// * **Read-Only State Exposure:** Expose internal controller state as a read-only provider to consumers.
   factory CoralProvider.coral(Coral<T> coral) = _InstantCoralProvider.coral;
 
   /// The underlying [Coral] instance managed by this provider.
   ///
   /// **Implementation note (Broadcaster Line Node & Caching Warning):**
   /// - **Multi-Cast Line Generation:** When this provider is a [CoralBroadcaster] (e.g., created via a
-  ///   `CoralController` with `broadcast: true`), every access to [coral] creates and returns a **new,
+  ///   [CoralController] with `broadcast: true`), every access to [coral] creates and returns a **new,
   ///   distinct branch (Line) node instance**.
-  /// - **Do Not Call Repeatedly in Lifecycle / Build Methods:** Calling `provider.coral` repeatedly in separate
-  ///   lifecycle hooks—such as calling `provider.coral` once inside `manifest()` and again inside `build()`—will
+  /// - **Do Not Call Repeatedly in Lifecycle / Compute Methods:** Calling `provider.coral` repeatedly in separate
+  ///   hooks—such as calling `provider.coral` once inside `manifest()` and again inside `compute()`—will
   ///   register one line node (Node A) in the reactive topology while pulling data from a completely unattached
-  ///   or separate line node (Node B) during rendering. This causes topological desynchronization, lost dirty updates,
-  ///   or `CoralBroadcasterLineDormantAccessError`.
+  ///   or separate line node (Node B) during evaluation. This causes topological desynchronization, lost dirty updates,
+  ///   or [CoralBroadcasterLineDormantAccessError].
   /// - **Best Practice (Single Instance Caching):** Always cache the result of [coral] into a `final` or `late final`
-  ///   field (or initialize it once in the constructor) and reuse that exact instance across all reactive methods
-  ///   (`manifest()`, `build()`, etc.).
+  ///   field (initialized in the constructor initializer list) and reuse that exact instance across `manifest()` and `compute()`.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
-  /// base class MyComponent extends BuildComponent {
-  ///   MyComponent({required CoralProvider<MyData> provider})
-  ///       : dataCoral = provider.coral; // Cache once at instantiation
+  /// base class FormattedComputation extends SimplexComputation<String> {
+  ///   FormattedComputation({required CoralProvider<int> provider})
+  ///       : countCoral = provider.coral; // Cache once in initializer list
   ///
-  ///   final Coral<MyData> dataCoral;
+  ///   final Coral<int> countCoral;
   ///
   ///   @override
   ///   @manifestSync
-  ///   Iterable<CoralNode> manifest() => [dataCoral];
+  ///   CoralNode manifest() => countCoral;
   ///
   ///   @override
-  ///   Widget build() {
-  ///     final data = dataCoral.data; // Reuse the same cached node
-  ///     return Text(data.title);
+  ///   String compute() {
+  ///     final count = countCoral.data; // Reuse the same cached node
+  ///     return 'Count: $count';
   ///   }
   /// }
   /// ```
@@ -616,7 +645,7 @@ abstract interface class CoralProvider<T> implements CorallineLifecycleStatus {
   @override
   bool get isPaused;
 
-  /// Whether the underlying [coral] pipeline node has been permanently deactivated.
+  /// Whether the underlying [coral] pipeline node is currently in the deactivated (inactive) state.
   @override
   bool get isDeactivated;
 }
@@ -627,9 +656,16 @@ extension CoralExtension<S> on Coral<S> {
   CoralBroadcaster<S> toBroadcaster() => CoralBroadcaster<S>(this);
 
   /// Connects this [Coral] node to a [CoralTerminal] with the given [onDirty] callback.
+  ///
+  /// * [onDirty]: Callback invoked when this pipeline marks the terminal dirty.
   CoralTerminal<S> toTerminal(void Function() onDirty) => CoralTerminal<S>(this, onDirty: onDirty);
 
   /// Attaches lifecycle event observers to this [Coral] pipeline.
+  ///
+  /// * [onActivated]: Invoked when the returned node transitions to active.
+  /// * [onPaused]: Invoked when the returned node transitions to paused.
+  /// * [onResumed]: Invoked when the returned node resumes from a paused state.
+  /// * [onDeactivated]: Invoked when the returned node transitions to deactivated.
   Coral<S> observeLifecycle({
     void Function()? onActivated,
     void Function()? onPaused,
@@ -651,9 +687,12 @@ extension CoralProviderExtension<S> on CoralProvider<S> {
   CoralBroadcaster<S> toBroadcaster() => coral.toBroadcaster();
 
   /// Connects this provider's underlying [coral] to a [CoralTerminal] with the given [onDirty] callback.
+  ///
+  /// * [onDirty]: Callback invoked when the underlying [coral] marks the terminal dirty.
   CoralTerminal<S> toTerminal(void Function() onDirty) => CoralTerminal<S>(coral, onDirty: onDirty);
 }
 
+/// Declarative transformation, branching, recovery, and filtering operators for [Coral] nodes.
 extension CoralComputationExtension<S> on Coral<S> {
   /// Dynamically constructs and attaches a new downstream [Coral] node based on the computed data.
   ///
@@ -662,21 +701,22 @@ extension CoralComputationExtension<S> on Coral<S> {
   /// at runtime depending on the computed data payload.
   ///
   /// * [cascade]: A builder callback that yields the next [Coral] node.
-  /// * [seal]: If `true`, the resulting node cannot be detached from the source. Defaults to `true`.
-  /// * [hotswap]: If `true`, allows swapping the downstream sub-graph smoothly. Defaults to `false`.
-  /// * [eager]: If `true`, computes the downstream sub-graph eagerly. Defaults to `false`.
+  /// * [seal]: If `true`, this cascading node permanently owns the inner [Coral] returned by [cascade],
+  ///   preventing external nodes from detaching it. Defaults to `true`.
+  /// * [hotswap]: If `true`, defers deactivation of swapped-out inner nodes to the end of the microtask. Defaults to `false`.
+  /// * [eager]: If `true`, evaluates [cascade] and attaches the inner node eagerly during dirty propagation. Defaults to `false`.
   ///
   /// **Ensures:**
   /// * Returns a new [Coral] node whose snapshot represents the computed state of the active branch.
   /// * Automatically propagates state updates from both the source node and the active branch.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
-  /// // Dynamically switch to a different repository based on the user's role
-  /// final roleCoral = Coral.data(UserRole.admin);
+  /// // Dynamically switch to a different branch Coral based on the user's role
+  /// final roleCoral = Coral.data('admin');
   /// final repositoryCoral = roleCoral.cascade((role) {
-  ///   if (role == UserRole.admin) return AdminRepositoryCoral();
-  ///   return GuestRepositoryCoral();
+  ///   if (role == 'admin') return Coral.data('AdminRepository');
+  ///   return Coral.data('GuestRepository');
   /// }, hotswap: true);
   /// ```
   Coral<T> cascade<T>(
@@ -707,9 +747,9 @@ extension CoralComputationExtension<S> on Coral<S> {
   /// **Ensures:**
   /// * Returns a new [Coral] node that only signals dirty state when the payload changes.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
-  /// final searchQueryCoral = Coral.data("hello");
+  /// final searchQueryCoral = Coral.data('hello');
   /// // Downstream pipelines will only be triggered when the query actually changes
   /// final distinctSearchCoral = searchQueryCoral.distinct();
   /// ```
@@ -722,19 +762,19 @@ extension CoralComputationExtension<S> on Coral<S> {
   /// The child nodes are dynamically updated when the parent node's payload changes.
   ///
   /// * [cascade]: A builder callback that yields the iterable of child nodes.
-  /// * [seal]: If `true`, the resulting [Trunk] is sealed and cannot be modified. Defaults to `true`.
-  /// * [hotswap]: If `true`, allows swapping component nodes. Defaults to `false`.
-  /// * [eager]: If `true`, computes child nodes eagerly. Defaults to `false`.
+  /// * [seal]: If `true`, this diverging trunk permanently owns the child nodes returned by [cascade]. Defaults to `true`.
+  /// * [hotswap]: If `true`, defers deactivation of removed child nodes to the end of the microtask. Defaults to `false`.
+  /// * [eager]: If `true`, evaluates [cascade] and attaches child nodes eagerly during dirty propagation. Defaults to `false`.
   ///
   /// **Ensures:**
   /// * Returns a [Trunk] bundle representing the diverged child [Coral] nodes.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
   /// // Split a single list of IDs into individual Coral nodes for concurrent processing
-  /// final userIdsCoral = Coral.data(["user1", "user2", "user3"]);
+  /// final userIdsCoral = Coral.data(['user1', 'user2', 'user3']);
   /// final userTrunk = userIdsCoral.diverge(
-  ///   (ids) => ids.map((id) => UserProfileCoral(id)),
+  ///   (ids) => ids.map((id) => Coral.data('Profile($id)')),
   /// );
   /// ```
   Trunk<T> diverge<T>(
@@ -763,16 +803,19 @@ extension CoralComputationExtension<S> on Coral<S> {
   /// * [onEmpty]: Triggers when the source is empty to return a fallback payload.
   /// * [onDamage]: Triggers when the source is damaged to return a fallback payload.
   ///
-  /// **Ensures:**
-  /// * Returns a new [Coral] node that is guaranteed to contain a valid payload if the respective
-  ///   fallback callback is provided and resolves successfully.
+  /// **Requires:**
+  /// * At least one of [onEmpty] or [onDamage] must be non-null.
   ///
-  /// **Example:**
+  /// **Ensures:**
+  /// * Returns a new [Coral] node that contains a valid payload if the respective
+  ///   fallback callback is provided and resolves without throwing.
+  ///
+  /// ## Examples
   /// ```dart
-  /// final networkCoral = fetchNetworkData();
+  /// final networkCoral = Coral<String>.empty();
   /// final safeCoral = networkCoral.fallback(
-  ///   onEmpty: () => "Loading...",
-  ///   onDamage: (err, stack) => "Error occurred: $err",
+  ///   onEmpty: () => 'Loading...',
+  ///   onDamage: (err, [stack]) => 'Error occurred: $err',
   /// );
   /// ```
   Coral<S> fallback({
@@ -791,7 +834,7 @@ extension CoralComputationExtension<S> on Coral<S> {
   /// * Returns a new [Coral] node of type `S?` where empty snapshots become valid nulls.
   /// * Propagates damaged states as-is.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
   /// final uninitializedCoral = Coral<String>.empty();
   /// final nullCoral = uninitializedCoral.fallbackEmptyToNull(); // Payload is now 'null'
@@ -801,22 +844,25 @@ extension CoralComputationExtension<S> on Coral<S> {
   /// Conditionally blocks downstream computation based on validation checks.
   ///
   /// **Core Concept (Pipeline Guard):**
-  /// Prevents downstream computation from continuing under invalid contexts. If [canProceed]
-  /// returns false, the pipeline transitions immediately into a damaged state.
+  /// Prevents downstream computation from continuing when [canProceed] returns `false`.
+  /// When blocked, the node transitions to [CoralSnapshot.empty] if [getReason] is omitted
+  /// or returns `null`, or transitions to [CoralSnapshot.damaged] with the non-null error
+  /// object returned by [getReason].
   ///
-  /// * [canProceed]: A callback validation function that must return `true` to allow computation.
-  /// * [getReason]: A callback returning the error object to store in the damaged state.
+  /// * [canProceed]: A callback validation function that must return `true` to allow the upstream snapshot through.
+  /// * [getReason]: An optional callback returning the error object for a `damaged` snapshot when [canProceed] returns `false`; if `null` or returning `null`, an `empty` snapshot is produced instead.
   ///
   /// **Ensures:**
-  /// * Returns a new [Coral] node that remains valid only if [canProceed] resolves to `true`.
-  /// * Transitions to a damaged state if the guard condition fails.
+  /// * Returns a new [Coral] node that forwards the upstream snapshot only when [canProceed] resolves to `true`.
+  /// * Produces an `empty` snapshot (when reason is `null`) or a `damaged` snapshot (when reason is non-null) if [canProceed] returns `false`.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
-  /// final fileReaderCoral = readFileCoral();
+  /// var hasFilePermissions = false;
+  /// final fileReaderCoral = Coral.data('file-contents');
   /// final safeFileReader = fileReaderCoral.guard(
-  ///   canProceed: () => hasFilePermissions(),
-  ///   getReason: () => "Permission denied",
+  ///   canProceed: () => hasFilePermissions,
+  ///   getReason: () => 'Permission denied',
   /// );
   /// ```
   Coral<S> guard({required bool Function() canProceed, Object? Function()? getReason}) =>
@@ -829,10 +875,12 @@ extension CoralComputationExtension<S> on Coral<S> {
   /// If the upstream node is empty or damaged, that state is propagated downstream
   /// without invoking [convert].
   ///
-  /// **Example:**
+  /// * [convert]: Pure synchronous function transforming a valid `S` value into `T`.
+  ///
+  /// ## Examples
   /// ```dart
   /// final countCoral = Coral.data(5);
-  /// final stringCoral = countCoral.map((count) => "Count is $count");
+  /// final stringCoral = countCoral.map((count) => 'Count is $count');
   /// ```
   Coral<T> map<T>(T Function(S source) convert) => _MapCoral<S, T>(this, convert: convert);
 }
@@ -840,10 +888,13 @@ extension CoralComputationExtension<S> on Coral<S> {
 /// Computation operators available directly on any [CoralProvider].
 ///
 /// A convenience extension that allows computation operators to be called directly
-/// on any [CoralProvider] (such as `Coralline` or custom components), automatically
+/// on any [CoralProvider] (such as [CoralController] or custom components), automatically
 /// delegating the operation to the underlying [Coral] node.
 extension CoralProviderComputationExtension<S> on CoralProvider<S> {
   /// Delegates [CoralComputationExtension.cascade] to the underlying [Coral].
+  ///
+  /// * [cascade]: Builder callback yielding the next [Coral] node.
+  /// * [eager]: If `true`, evaluates [cascade] eagerly during dirty propagation.
   Coral<T> cascade<T>(
     Coral<T> Function(S data) cascade, {
     bool eager = false,
@@ -851,9 +902,16 @@ extension CoralProviderComputationExtension<S> on CoralProvider<S> {
       coral.cascade(cascade, eager: eager);
 
   /// Delegates [CoralComputationExtension.distinct] to the underlying [Coral].
+  ///
+  /// * [equals]: Optional custom equality comparison function.
   Coral<S> distinct([bool Function(S previous, S next)? equals]) => coral.distinct(equals);
 
   /// Delegates [CoralComputationExtension.diverge] to the underlying [Coral].
+  ///
+  /// * [cascade]: Builder callback yielding the iterable of child [Coral] nodes.
+  /// * [seal]: If `true`, the resulting [Trunk] permanently owns its child nodes.
+  /// * [hotswap]: If `true`, defers deactivation of removed child nodes to the end of the microtask.
+  /// * [eager]: If `true`, evaluates [cascade] eagerly during dirty propagation.
   Trunk<T> diverge<T>(
     Iterable<Coral<T>> Function(S data) cascade, {
     bool seal = true,
@@ -863,6 +921,9 @@ extension CoralProviderComputationExtension<S> on CoralProvider<S> {
       coral.diverge(cascade, seal: seal, hotswap: hotswap, eager: eager);
 
   /// Delegates [CoralComputationExtension.fallback] to the underlying [Coral].
+  ///
+  /// * [onEmpty]: Fallback value generator when the source is `empty`.
+  /// * [onDamage]: Fallback value generator when the source is `damaged`.
   Coral<S> fallback({
     S Function()? onEmpty,
     S Function(Object error, [StackTrace? stackTrace])? onDamage,
@@ -873,10 +934,15 @@ extension CoralProviderComputationExtension<S> on CoralProvider<S> {
   Coral<S?> fallbackEmptyToNull() => coral.fallbackEmptyToNull();
 
   /// Delegates [CoralComputationExtension.guard] to the underlying [Coral].
+  ///
+  /// * [canProceed]: Validation callback that must return `true` to allow the upstream snapshot through.
+  /// * [getReasonIfCannotProceed]: Optional callback returning the error object when [canProceed] returns `false`.
   Coral<S> guard({required bool Function() canProceed, Object? Function()? getReasonIfCannotProceed}) =>
       coral.guard(canProceed: canProceed, getReason: getReasonIfCannotProceed);
 
   /// Delegates [CoralComputationExtension.map] to the underlying [Coral].
+  ///
+  /// * [convert]: Pure synchronous function transforming a valid `S` value into `T`.
   Coral<T> map<T>(T Function(S source) convert) => coral.map(convert);
 }
 
@@ -903,6 +969,9 @@ extension CoralCollectionExtension<T> on Iterable<Coral<T>> {
   /// * [hotswap]: If `true` (only applicable when [seal] is `false`), enables mooring point
   ///   safeguards for bundled lines when they are swapped or claimed by downstream parent nodes
   ///   while active.
+  ///
+  /// **Requires:**
+  /// * If [seal] is `true`, [hotswap] must be `false`.
   ///
   /// **Note on [hotswap]:**
   /// Setting [seal] to `false` permits *external* downstream nodes (e.g., couplers, converging or

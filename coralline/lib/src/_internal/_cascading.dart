@@ -29,6 +29,8 @@ abstract base class _CascadingCoralline<S extends CoralNode, T extends CoralNode
   void _performCascadeGuarded();
 }
 
+/// Coordinates lazy cascading execution while suppressing redundant dirty signals during pulls.
+///
 /// ### Why [_SuppressibleDirtyPoint]?
 ///
 /// In lazy cascading, when the source changes, we do NOT compute immediately.

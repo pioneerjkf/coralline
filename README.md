@@ -3,7 +3,7 @@
 [![coralline](https://img.shields.io/pub/v/coralline.svg?label=coralline)](https://pub.dev/packages/coralline)
 [![coralline_extensions](https://img.shields.io/pub/v/coralline_extensions.svg?label=coralline_extensions)](https://pub.dev/packages/coralline_extensions)
 [![coralline_flutter](https://img.shields.io/pub/v/coralline_flutter.svg?label=coralline_flutter)](https://pub.dev/packages/coralline_flutter)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](coralline/LICENSE)
 [![Flutter SDK](https://img.shields.io/badge/Flutter-3.10+-02569B.svg?logo=flutter)](https://flutter.dev)
 [![Dart SDK](https://img.shields.io/badge/Dart-3.6+-0175C2.svg)](https://dart.dev)
 
@@ -37,6 +37,8 @@ flowchart LR
     B0 -->|"Compute & Push"| C0["Intermediate Stage 2"]
     C0 -->|"Compute & Push"| D0["UI Rebuild"]
 ```
+
+*(Illustrative eager pipeline: transformations run as values are emitted.)*
 
 **Coralline** decouples dirty notification from data computation into two distinct phases:
 
@@ -132,4 +134,4 @@ Explore the in-depth documentation in the [`coralline/doc/manual`](coralline/doc
 
 ## License
 
-Coralline ecosystem libraries are licensed under the [Apache License 2.0](LICENSE).
+Coralline ecosystem libraries are licensed under the [Apache License 2.0](coralline/LICENSE).

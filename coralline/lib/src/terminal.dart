@@ -21,24 +21,33 @@ part of '../coralline.dart';
 /// upon creation. This allows centralized intercepting and logging of silent pipeline
 /// errors to services like Sentry, Firebase Crashlytics, or Datadog without crashing the UI.
 ///
-/// **Example:**
+/// ## Examples
 /// ```dart
 /// final class CrashlyticsIntent extends CorallineTerminalIntent {
 ///   @override
 ///   void handleUncaughtError(Object error, StackTrace stackTrace) {
-///     FirebaseCrashlytics.instance.recordError(error, stackTrace);
+///     print('Logged uncaught pipeline error: $error');
 ///   }
 /// }
 ///
+/// final pipeline = Coral.data(42);
+///
 /// // Inject the custom intent into the terminal
-/// final terminal = pipeline.toTerminal(
-///   () => setState(() {}),
+/// final terminal = CoralTerminal.withIntent(
+///   pipeline,
 ///   intent: CrashlyticsIntent(),
+///   onDirty: () {},
 /// );
 /// ```
 abstract base class CorallineTerminalIntent {
+  /// Creates a [CorallineTerminalIntent].
+  CorallineTerminalIntent();
+
   /// Invoked when the pipeline encounters an unexpected error that cannot be
   /// safely encapsulated within a `damaged` data snapshot.
+  ///
+  /// * [error]: The uncaught error object thrown during pipeline execution or lifecycle transitions.
+  /// * [stackTrace]: The stack trace associated with [error].
   void handleUncaughtError(Object error, StackTrace stackTrace) {
     // In debug mode, log the formatted error cleanly without throwing an assertion cascade.
     assert(() {
@@ -114,22 +123,35 @@ abstract base class CorallineTerminalIntent {
 ///   UP the graph. Intermediate transformations execute lazily, and the final
 ///   computed data is handed directly to the UI.
 ///
-/// **Example:**
+/// ## Examples
 /// You can instantiate a terminal directly or use convenient extension methods:
 /// ```dart
-/// // Direct instantiation
-/// final terminal = CoralTerminal(pipeline, onDirty: () => setState(() {}));
+/// final pipeline = Coral.data(10);
 ///
-/// // Extension method
-/// final terminal = pipeline.toTerminal(() => setState(() {}));
+/// // Direct instantiation
+/// final directTerminal = CoralTerminal(pipeline, onDirty: () {});
+///
+/// // Extension method (for a separate pipeline instance)
+/// final extTerminal = Coral.data(20).toTerminal(() {});
 /// ```
 sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
+  /// Creates a [CorallineTerminal] attached to [inbound] without a terminal intent.
+  ///
+  /// * [inbound]: The upstream [CoralNode] pipeline to observe.
+  /// * [onDirty]: Callback invoked when the upstream pipeline marks this terminal dirty.
   CorallineTerminal(super.inbound, {required super.onDirty}) : intent = null;
 
+  /// Creates a [CorallineTerminal] attached to [inbound] with a custom [intent].
+  ///
+  /// * [inbound]: The upstream [CoralNode] pipeline to observe.
+  /// * [intent]: Contextual metadata and error-handling intent propagated upstream.
+  /// * [onDirty]: Callback invoked when the upstream pipeline marks this terminal dirty.
   CorallineTerminal.withIntent(super.inbound, {required CorallineTerminalIntent this.intent, required super.onDirty});
 
+  /// The upstream [CoralNode] attached to this terminal.
   C get inbound => _inbound;
 
+  /// The optional [CorallineTerminalIntent] associated with this terminal.
   @override
   final CorallineTerminalIntent? intent;
 
@@ -189,10 +211,13 @@ sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
     _resumeOptimistically();
   }
 
-  /// Permanently detaches the terminal from the graph, releasing all topological connections.
+  /// Transitions the terminal and its upstream pipeline into the deactivated (inactive) state.
   ///
   /// **Core Concept (Lifecycle - Deactivation):**
-  /// Detaches the terminal from the graph and releases all topological connections.
+  /// Signals that the external consumer is no longer actively observing the pipeline,
+  /// allowing upstream nodes to tear down resources (such as stream subscriptions or
+  /// managed [Coral.resource] instances). The [inbound] node remains attached to the
+  /// terminal and can be re-activated later by calling [activate].
   ///
   /// **Operational Mechanism:**
   /// 1. **Idempotency Check:** Guarantees that redundant deactivation calls are safely
@@ -222,7 +247,7 @@ sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
   /// Whether the terminal is temporarily paused.
   bool get isPaused => _state.isPaused;
 
-  /// Whether the terminal has been permanently deactivated.
+  /// Whether the terminal is currently in the deactivated (inactive) state.
   bool get isDeactivated => _state.isDeactivated;
 }
 
@@ -231,8 +256,17 @@ sealed class CorallineTerminal<C extends CoralNode> extends _TerminalPoint<C> {
 /// It mixes in [CoralSnapshotDelegator] to provide direct, type-safe access
 /// to the underlying `T` data payload without manually unwrapping the inbound.
 base class CoralTerminal<T> extends CorallineTerminal<Coral<T>> with CoralSnapshotDelegator<T> {
+  /// Creates a [CoralTerminal] observing [inbound].
+  ///
+  /// * [inbound]: The upstream [Coral] node to observe.
+  /// * [onDirty]: Callback invoked when [inbound] becomes dirty.
   CoralTerminal(super.inbound, {required super.onDirty});
 
+  /// Creates a [CoralTerminal] observing [inbound] with a custom [intent].
+  ///
+  /// * [inbound]: The upstream [Coral] node to observe.
+  /// * [intent]: Contextual metadata and error-handling intent propagated upstream.
+  /// * [onDirty]: Callback invoked when [inbound] becomes dirty.
   CoralTerminal.withIntent(super.inbound, {required super.intent, required super.onDirty}) : super.withIntent();
 
   @override
@@ -247,8 +281,17 @@ base class CoralTerminal<T> extends CorallineTerminal<Coral<T>> with CoralSnapsh
 /// It mixes in [TrunkSnapshotDelegator] to provide direct, type-safe access
 /// to the underlying `T` data payload without manually unwrapping the inbound.
 base class TrunkTerminal<T> extends CorallineTerminal<Trunk<T>> with TrunkSnapshotDelegator<T> {
+  /// Creates a [TrunkTerminal] observing [inbound].
+  ///
+  /// * [inbound]: The upstream [Trunk] node to observe.
+  /// * [onDirty]: Callback invoked when [inbound] becomes dirty.
   TrunkTerminal(super.inbound, {required super.onDirty});
 
+  /// Creates a [TrunkTerminal] observing [inbound] with a custom [intent].
+  ///
+  /// * [inbound]: The upstream [Trunk] node to observe.
+  /// * [intent]: Contextual metadata and error-handling intent propagated upstream.
+  /// * [onDirty]: Callback invoked when [inbound] becomes dirty.
   TrunkTerminal.withIntent(super.inbound, {required super.intent, required super.onDirty}) : super.withIntent();
 
   @override

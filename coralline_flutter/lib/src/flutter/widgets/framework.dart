@@ -36,14 +36,14 @@ part of '../../../widgets.dart';
 ///
 /// **BAD:**
 /// ```dart
-/// // [Anti-Pattern] Per-frame state instantiation inside build resets state
+/// // [Anti-Pattern] Instantiating a new controller inside manifest() creates an isolated source
 /// base class BadCounterBadge extends SimplexBuildComponent {
 ///   @override
 ///   @manifestSync
 ///   CoralNode manifest() => CoralController<int>(0).coral;
 ///
 ///   @override
-///   Widget build() => Text('Reset on every frame');
+///   Widget build() => const Text('Disconnected from external state');
 /// }
 /// ```
 ///
@@ -318,16 +318,17 @@ class CoralWidget extends Widget {
 /// [CoralWidgetElement] acts as the bridge between Flutter's element tree and Coralline's
 /// topological pipeline, converting dirty signals into framework rebuilds.
 ///
-/// **Design Philosophy:**
-/// Maintains a [CoralTerminal] to drive the reactive pipeline. When dependencies change
-/// (via [ComponentElement.didChangeDependencies]), it suppresses the standard Flutter rebuild and forwards the
-/// change into the reactive context provider. Rebuild is only scheduled if the terminal's
-/// final computed UI widget actually changes, avoiding redundant layout and render passes.
+/// Maintains a [CoralTerminal] to drive the reactive pipeline. When inherited dependencies
+/// change (via [ComponentElement.didChangeDependencies]), it suppresses the immediate default
+/// Flutter rebuild and forwards the updated [BuildContext] into `_intent._contextController`.
+/// A rebuild is then scheduled via [markNeedsBuild] only if a declared upstream or context-derived
+/// dependency (such as [CorallineBuildContextAware.dependOn]) marks the terminal dirty.
 ///
 /// **Implementation note:**
 /// - Never call `markNeedsBuild` directly unless you bypass the terminal's dirty propagation.
 /// - Ensure [unmount] cleanly deactivates the terminal to prevent subscription/memory leaks.
 base class CoralWidgetElement extends ComponentElement {
+  /// Creates a [CoralWidgetElement] for the given [widget].
   CoralWidgetElement(CoralWidget super.widget);
 
   late final _intent = CoralWidgetTerminalIntent(context: this);
@@ -433,7 +434,7 @@ base class CoralWidgetElement extends ComponentElement {
   ///
   /// **Ensures:**
   /// * Suppresses immediate framework rebuilds and delegates context updates to `_intent._contextController`.
-  /// * Schedules a rebuild only if the reactive pipeline computes a modified UI subtree.
+  /// * Schedules a rebuild via [markNeedsBuild] only if a context-derived dependency marks the terminal dirty.
   @mustCallSuper
   @override
   void didChangeDependencies() {
@@ -442,8 +443,8 @@ base class CoralWidgetElement extends ComponentElement {
       super.didChangeDependencies();
     } finally {
       _suppressMarkNeedsBuild = false;
-      // Instead of forcing a rebuild, delegate the context update to the reactive pipeline.
-      // The terminal will trigger markNeedsBuild only if the resulting UI actually changes.
+      // Instead of forcing an unconditional rebuild, forward the context update to the reactive pipeline.
+      // The terminal triggers markNeedsBuild only when a context-derived node propagates a dirty signal.
       _intent._contextController.set(this);
     }
   }
@@ -490,8 +491,8 @@ base class CoralWidgetTerminalIntent extends CorallineTerminalIntent {
 
   /// The internal controller emitting active element [BuildContext] updates.
   ///
-  /// Using a non-distinct stream ensures element updates trigger computation
-  /// computations from reacting to dynamic UI dependency changes.
+  /// Using a non-distinct controller ensures element dependency updates notify
+  /// downstream context-aware computations even when the [BuildContext] instance identity is unchanged.
   late final _contextController =
       CoralController<BuildContext>(_context, broadcast: true, distinct: false);
 
@@ -536,15 +537,16 @@ base class CoralWidgetTerminalIntent extends CorallineTerminalIntent {
 /// **BAD:**
 /// ```dart
 /// // [Anti-Pattern] Uncached context reads inside build create unattached dormant lines
-/// base class BadThemedComponent extends BuildComponent with CorallineBuildContextAware {
+/// base class BadThemedComponent extends BuildComponent
+///     with CorallineTerminalIntentAware, CorallineBuildContextAware {
 ///   @override
 ///   @manifestSync
 ///   Iterable<CoralNode> manifest() => [];
 ///
 ///   @override
 ///   Widget build() {
-///     final theme = context.map((ctx) => Theme.of(ctx)).data; // Fails!
-///     return Text('Theme primary: ${theme.primaryColor}');
+///     final dir = context.map((ctx) => Directionality.of(ctx)).data; // Fails!
+///     return Text('Direction: $dir');
 ///   }
 /// }
 /// ```
@@ -552,34 +554,36 @@ base class CoralWidgetTerminalIntent extends CorallineTerminalIntent {
 /// **GOOD:**
 /// ```dart
 /// // [Recommended] Cache derived context nodes in late final fields and declare in manifest
-/// base class GoodThemedComponent extends BuildComponent with CorallineBuildContextAware {
-///   late final themeCoral = context.map((ctx) => Theme.of(ctx)).distinct();
+/// base class GoodThemedComponent extends BuildComponent
+///     with CorallineTerminalIntentAware, CorallineBuildContextAware {
+///   late final dirCoral = context.map((ctx) => Directionality.of(ctx)).distinct();
 ///
 ///   @override
 ///   @manifestSync
-///   Iterable<CoralNode> manifest() => [themeCoral];
+///   Iterable<CoralNode> manifest() => [dirCoral];
 ///
 ///   @override
-///   Widget build() => Text('Theme primary: ${themeCoral.data.primaryColor}');
+///   Widget build() => Text('Direction: ${dirCoral.data}');
 /// }
 /// ```
 ///
 /// ## Examples
 /// ```dart
-/// base class ThemedStatusCard extends BuildComponent with CorallineBuildContextAware {
+/// base class ThemedStatusCard extends BuildComponent
+///     with CorallineTerminalIntentAware, CorallineBuildContextAware {
 ///   ThemedStatusCard({required this.messageCoral});
 ///   final Coral<String> messageCoral;
 ///
-///   late final themeCoral = context.map((ctx) => Theme.of(ctx)).distinct();
+///   late final dirCoral = context.map((ctx) => Directionality.of(ctx)).distinct();
 ///
 ///   @override
 ///   @manifestSync
-///   Iterable<CoralNode> manifest() => [messageCoral, themeCoral];
+///   Iterable<CoralNode> manifest() => [messageCoral, dirCoral];
 ///
 ///   @override
 ///   Widget build() {
-///     return Container(
-///       color: themeCoral.data.colorScheme.surface,
+///     return Directionality(
+///       textDirection: dirCoral.data,
 ///       child: Text(messageCoral.data),
 ///     );
 ///   }
@@ -668,14 +672,14 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   /// **Ensures:**
   /// * Automatically re-computes the pipeline whenever [T] (or [aspect]) updates.
   /// * Returns a non-null reactive [Coral<T>] pipeline emitting instances of [T].
-  ///
-  /// **Throws:**
-  /// * Throws a [TypeError] if no ancestor [InheritedWidget] of type [T] is found in the tree.
-  ///   Use [maybeDependOn] if the ancestor is optional.
+  /// * If no ancestor [InheritedWidget] of type [T] is found when the returned [Coral] is evaluated,
+  ///   a [TypeError] is thrown inside the mapping step and captured as a `damaged` snapshot state
+  ///   (which throws a [CoralSnapshotExtractionException] when `.data` is read). Use [maybeDependOn] if the ancestor is optional.
   ///
   /// ## Examples
   /// ```dart
-  /// base class ThemedComponent extends BuildComponent with CorallineBuildContextAware {
+  /// base class ThemedComponent extends BuildComponent
+  ///     with CorallineTerminalIntentAware, CorallineBuildContextAware {
   ///   late final directionalityCoral = dependOn<Directionality>();
   ///
   ///   @override
@@ -703,7 +707,8 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   ///
   /// ## Examples
   /// ```dart
-  /// base class CustomScopeComponent extends BuildComponent with CorallineBuildContextAware {
+  /// base class CustomScopeComponent extends BuildComponent
+  ///     with CorallineTerminalIntentAware, CorallineBuildContextAware {
   ///   late final optionalThemeCoral = maybeDependOn<DefaultTextStyle>();
   ///
   ///   @override
@@ -739,14 +744,14 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   ///
   /// **Ensures:**
   /// * Returns a non-null reactive [Coral<T>] pipeline.
-  ///
-  /// **Throws:**
-  /// * Throws a [TypeError] if no ancestor [InheritedCoralProviderWidget] of type [T] is found.
-  ///   Use [maybeCoralOf] if optional.
+  /// * If no ancestor [InheritedCoralProviderWidget] of type [T] is found when evaluated,
+  ///   a [TypeError] is captured as a `damaged` snapshot state (which throws a [CoralSnapshotExtractionException]
+  ///   when `.data` is read). Use [maybeCoralOf] if optional.
   ///
   /// ## Examples
   /// ```dart
-  /// base class CounterConsumer extends BuildComponent with CorallineBuildContextAware {
+  /// base class CounterConsumer extends BuildComponent
+  ///     with CorallineTerminalIntentAware, CorallineBuildContextAware {
   ///   late final counterCoral = coralOf<int>();
   ///
   ///   @override
@@ -774,7 +779,8 @@ base mixin CorallineBuildContextAware on CorallineTerminalIntentAware {
   ///
   /// ## Examples
   /// ```dart
-  /// base class OptionalConsumer extends BuildComponent with CorallineBuildContextAware {
+  /// base class OptionalConsumer extends BuildComponent
+  ///     with CorallineTerminalIntentAware, CorallineBuildContextAware {
   ///   late final optionalCountCoral = maybeCoralOf<int>();
   ///
   ///   @override
@@ -831,6 +837,7 @@ base class InheritedCoralProvider<T> extends SimplexBuildComponent {
   final Widget child;
 
   @override
+  @manifestSync
   CoralNode manifest() => providerCoral;
 
   @override

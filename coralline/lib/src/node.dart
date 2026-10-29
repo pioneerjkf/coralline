@@ -181,11 +181,15 @@ sealed class CoralNode extends _CorallineLifecycle with _CorallineFasttrack impl
     }
   }
 
+  /// Whether this node is currently activated by a downstream terminal.
   bool get isActivated => _state.isActivated;
 
+  /// Whether this node is currently running (activated and not paused).
   bool get isRunning => _state.isRunning;
 
+  /// Whether this node is temporarily paused.
   bool get isPaused => _state.isPaused;
 
+  /// Whether this node is currently in the deactivated (inactive) state.
   bool get isDeactivated => _state.isDeactivated;
 }

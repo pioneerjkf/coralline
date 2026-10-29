@@ -20,10 +20,10 @@ final class _KeyedMapCoral<E, K, T> extends _ReadlessRelayComputeCoralProxy<Iter
   ///
   /// ### Cache Retention & Lifecycle:
   /// - **Do NOT clear on `_performClearance()` or `isDamaged`**:
-  ///   `_performClearance()` invalidates `_snapshot` when [inbound] emits dirty.
+  ///   `_performClearance()` invalidates `_snapshot` when [_inbound] emits dirty.
   ///   Clearing `_internalCache` on clearance would defeat the caching purpose of
   ///   `keyed.map`, causing re-evaluation of `_convert` for existing keys.
-  /// - **Explicit Reset**: Cleared when [source] is empty (`source.isEmpty`) or when
+  /// - **Explicit Reset**: Cleared when the inbound snapshot is empty (`source.isEmpty`) or when
   ///   an unhandled computation exception occurs inside [_compute].
   /// - **Garbage Sweeping**: Inactive keys are removed via [Map.removeWhere] when cache
   ///   length exceeds active keys (Pigeonhole Principle).
@@ -97,7 +97,7 @@ abstract base class _KeyedDivergingTrunk<E, K, T> extends _CascadingTrunk<Iterab
   ///   Clearing `_internalCache` on release/error would wipe node identity and inner state,
   ///   causing unnecessary node re-creation on subsequent pulls. Node lifecycles
   ///   (attachment/detachment) are synchronized separately while maintaining cache entries.
-  /// - **Explicit Reset**: Cleared only when [source] is empty (`source.isEmpty`).
+  /// - **Explicit Reset**: Cleared only when the upstream source snapshot is empty (`source.isEmpty`).
   /// - **Garbage Sweeping**: Inactive keys are removed via [Map.removeWhere] during evaluation.
   final Map<K, Coral<T>> _internalCache = {};
 

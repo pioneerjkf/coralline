@@ -47,11 +47,9 @@ base mixin _Coralline<C extends CoralNode> on _Joint {
     super._resume();
   }
 
-  /// Teardown Phase Ordering (Symmetrical Safety):
+  /// Deactivates this joint before propagating deactivation to [_inbound].
   ///
-  /// `super` MUST be called BEFORE processing upstream nodes.
-  /// This symmetrical teardown ensures that this joint is fully turned off before
-  /// dismantling dependencies, safely ignoring any events emitted during upstream teardown.
+  /// See [_pause] for teardown phase ordering details.
   @mustCallSuper
   @override
   @pragma('vm:prefer-inline')
@@ -302,17 +300,14 @@ base mixin _SealedHotswapCorallineMixin<C extends CoralNode> on _SwappableCorall
     super._releaseCoralNodeOrThrow(coralNode);
   }
 
-  /// **Core Concept (Ownership Validation Bypass):**
   /// A transient state flag used to safely bypass graph ownership validation.
   ///
-  /// **Design Philosophy (Legitimate Transfers):**
   /// By default, [_releaseCoralNodeOrThrow] throws an exception when a node attempts
   /// to link to a new parent, which prevents unauthorized ownership transfers (stealing).
   /// However, when a node is discarded in a hotswap scenario, it is not completely
   /// destroyed. Instead, it is safely moved to the [_mooringPoint], which involves a
   /// legitimate ownership transfer.
   ///
-  /// **Operational Mechanism:**
   /// To prevent an exception from being thrown during this transfer, the node that is
   /// currently being explicitly discarded is temporarily stored in this variable,
   /// permitting the release. This flag is immediately reset to `null` once the
@@ -393,18 +388,9 @@ base mixin _DetachableHotswapCorallineMixin<C extends CoralNode> on _SwappableCo
     _CorallineScheduler.instance._scheduleDirtyPush(this);
   }
 
-  /// A transient state flag used to safely bypass graph ownership validation.
+  /// Transient reference to the inbound node currently being transferred to [_mooringPoint].
   ///
-  /// By default, [_releaseCoralNodeOrThrow] throws an exception when a node attempts
-  /// to link to a new parent, which prevents unauthorized ownership transfers (stealing).
-  /// However, when a node is discarded in a hotswap scenario, it is not completely
-  /// destroyed. Instead, it is safely moved to the [_mooringPoint], which involves a
-  /// legitimate ownership transfer.
-  ///
-  /// To prevent an exception from being thrown during this transfer, the node that is
-  /// currently being explicitly discarded is temporarily stored in this variable,
-  /// permitting the release. This flag is immediately reset to `null` once the
-  /// discard process is complete.
+  /// See [_SealedHotswapCorallineMixin._discardingInbound] for ownership bypass mechanics.
   C? _discardingInbound;
 
   @mustCallSuper

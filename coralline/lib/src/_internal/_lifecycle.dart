@@ -6,7 +6,7 @@ part of '../../coralline.dart';
 
 enum _CoralNodeLifecycleState {
   // Active state: The object is able to perform its function.
-  // Note: In this example, anything not inactive is considered active.
+  // Note: In this state machine, anything not inactive is considered active.
   // 'running' and 'paused' represent more specific active states.
 
   // Inactive state: The object cannot perform its function

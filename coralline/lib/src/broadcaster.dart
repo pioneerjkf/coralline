@@ -52,28 +52,43 @@ part of '../coralline.dart';
 ///
 /// * **BAD (Placing intent-dependent computations upstream of a broadcaster):**
 ///   ```dart
-///   // Anti-pattern: Broadcaster drops intents to prevent 1:N parameter conflicts
-///   final intentAwareCoral = MyIntentAwareComputation().coral;
-///   final broadcaster = CoralBroadcaster(intentAwareCoral); // Downstream intents will NOT reach intentAwareCoral
+///   base class MyIntentAwareComputation extends SimplexComputation<int>
+///       with CorallineTerminalIntentAware {
+///     MyIntentAwareComputation(this.baseValue);
+///     final int baseValue;
+///
+///     @override
+///     Coral<int> manifest() => Coral.data(baseValue);
+///   }
+///
+///   // Anti-pattern: Broadcaster blocks intents and throws CorallineTopologyError in debug mode
+///   final intentAwareCoral = MyIntentAwareComputation(1).coral;
+///   // Throws CorallineTopologyError when assertions are enabled:
+///   final broadcaster = CoralBroadcaster(intentAwareCoral);
 ///   ```
 /// * **GOOD (Position intent-aware nodes downstream of the broadcaster):**
 ///   ```dart
 ///   // Recommended: Share the common pipeline, then specialize downstream with intent awareness
+///   final rawSourceCoral = Coral.data(1);
 ///   final sharedBroadcaster = CoralBroadcaster(rawSourceCoral);
-///   final specializedPipeline = sharedBroadcaster.coral.cascade((data) => MyIntentAwareComputation(data).coral);
+///   final specializedPipeline = sharedBroadcaster.coral.cascade(
+///     (data) => MyIntentAwareComputation(data).coral,
+///   );
 ///   ```
 ///
 /// **Implementation note:**
 /// - **No Intent Propagation**: If an upstream node requires a specific UI context
-///   (Intent) to function, it MUST be placed *downstream* of this broadcaster,
-///   as the broadcaster acts as a firewall and drops all intents.
+///   ([CorallineTerminalIntent]) to function, it MUST be placed *downstream* of this broadcaster.
+///   The broadcaster acts as an intent firewall, drops all downstream intents, and
+///   throws a [CorallineTopologyError] in debug mode if a [CorallineTerminalIntentAware]
+///   computation is found upstream.
 /// - **Concurrent Modification**: The internal broadcast mechanism includes safety
 ///   guards to prevent concurrent modification errors if a downstream consumer
 ///   attaches or detaches while the dirty signal is broadcasting.
 ///
-/// **Example:**
+/// ## Examples
 /// ```dart
-/// // Usually created via [CoralProvider] or an extension method:
+/// final upstreamPipeline = Coral.data(5);
 /// final broadcaster = CoralBroadcaster(upstreamPipeline);
 ///
 /// // Multiple downstreams can now safely branch off:
@@ -124,11 +139,17 @@ sealed class CoralBroadcaster<T> implements CoralProvider<T> {
   @override
   bool get isPaused;
 
-  /// Whether the upstream pipeline has been permanently deactivated.
+  /// Whether the upstream pipeline is currently in the deactivated (inactive) state.
   @override
   bool get isDeactivated;
 
-  /// Exposes the shared branch [Coral] node that consumers can attach to.
+  /// Allocates and returns a new branch [Coral] node that consumers can attach to.
+  ///
+  /// Every read of [coral] allocates a distinct branch node. Store or pass each
+  /// branch to a single downstream consumer rather than accessing [coral]
+  /// repeatedly for the same consumer. Reading `.snapshot` or `.data` on a
+  /// returned branch while it is dormant (`isRunning == false`) throws a
+  /// [CoralBroadcasterLineDormantAccessError].
   ///
   /// **Ensures:**
   /// * Returns a new branch [Coral] node linked to this broadcaster.

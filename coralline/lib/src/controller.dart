@@ -58,7 +58,7 @@ part of '../coralline.dart';
 /// **Phase 4: Pull-Data & Lazy Computation (Upstream Traversal)**
 /// - Action: During the UI render cycle, the terminal explicitly requests `.data`.
 /// - Result: The terminal pulls data from its parent, triggering a reverse traversal
-///   UP the graph. Only now are intermediate transformations (`map`, `derive`, `aggregate`)
+///   UP the graph. Only now are intermediate transformations (`map`, `cascade`, `aggregate`)
 ///   executed. The results are cached at each node, and the computed data is handed to UI.
 ///
 /// #### Why this matters?
@@ -83,14 +83,14 @@ part of '../coralline.dart';
 ///   final terminalB = controller.coral.toTerminal(() {}); // Works smoothly
 ///   ```
 ///
-/// **Example:**
+/// ## Examples
 /// ```dart
 /// final controller = CoralController<int>(0);
 ///
 /// // Imperative Injections
-/// controller.set(10);           // Inject valid data
-/// controller.empty();           // Inject an Empty state
-/// controller.setError(e, s);    // Inject a Damaged state
+/// controller.set(10); // Inject valid data
+/// controller.empty(); // Inject an Empty state
+/// controller.setError(StateError('failed'), StackTrace.current); // Inject a Damaged state
 ///
 /// // Guarded Injection: Automatically maps thrown exceptions to a Damaged state.
 /// controller.setGuarded(() => int.parse('invalid'));
@@ -115,6 +115,14 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
   /// Use this when an **initial value must exist** at the moment of creation.
   /// The pipeline becomes immediately valid and downstream consumers can pull
   /// data without exceptions.
+  ///
+  /// * [data]: The initial value payload stored in the controller.
+  /// * [broadcast]: If `true`, wraps the outbound node in a [CoralBroadcaster] for 1:N sharing.
+  /// * [distinct]: If `true` (default), suppresses consecutive updates that are equal.
+  /// * [equals]: Custom equality comparator used when [distinct] is `true`.
+  ///
+  /// **Requires:**
+  /// * If [equals] is provided, [distinct] must be `true`.
   CoralController(
     T data, {
     this.broadcast = false,
@@ -131,6 +139,13 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
   /// The pipeline starts in an Empty/Pending state. If downstream attempts
   /// to pull `.data` before an initial [set] is called, it will intentionally
   /// throw a Fail-Fast exception.
+  ///
+  /// * [broadcast]: If `true`, wraps the outbound node in a [CoralBroadcaster] for 1:N sharing.
+  /// * [distinct]: If `true` (default), suppresses consecutive updates that are equal.
+  /// * [equals]: Custom equality comparator used when [distinct] is `true`.
+  ///
+  /// **Requires:**
+  /// * If [equals] is provided, [distinct] must be `true`.
   CoralController.late({
     this.broadcast = false,
     bool distinct = true,
@@ -145,6 +160,19 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
   ///
   /// Use this to **allocate heavy resources (e.g., GPS tracking, WebSockets)
   /// only when a subscriber activates**, and release them upon deactivation.
+  ///
+  /// * [data]: The initial value payload stored in the controller.
+  /// * [broadcast]: If `true`, wraps the outbound node in a [CoralBroadcaster] for 1:N sharing.
+  /// * [distinct]: If `true` (default), suppresses consecutive updates that are equal.
+  /// * [equals]: Custom equality comparator used when [distinct] is `true`.
+  /// * [onActivated]: Invoked when the outbound node transitions to active.
+  /// * [onPaused]: Invoked when the outbound node transitions to paused.
+  /// * [onResumed]: Invoked when the outbound node resumes from a paused state.
+  /// * [onDeactivated]: Invoked when the outbound node transitions to deactivated.
+  ///
+  /// **Requires:**
+  /// * If [equals] is provided, [distinct] must be `true`.
+  /// * At least one lifecycle callback ([onActivated], [onPaused], [onResumed], or [onDeactivated]) must be non-null.
   CoralController.lifecycle(
     T data, {
     this.broadcast = false,
@@ -184,6 +212,18 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
   ///
   /// Perfect for scenarios where an API request should only be triggered
   /// upon the first subscriber connecting.
+  ///
+  /// * [broadcast]: If `true`, wraps the outbound node in a [CoralBroadcaster] for 1:N sharing.
+  /// * [distinct]: If `true` (default), suppresses consecutive updates that are equal.
+  /// * [equals]: Custom equality comparator used when [distinct] is `true`.
+  /// * [onActivated]: Invoked when the outbound node transitions to active.
+  /// * [onPaused]: Invoked when the outbound node transitions to paused.
+  /// * [onResumed]: Invoked when the outbound node resumes from a paused state.
+  /// * [onDeactivated]: Invoked when the outbound node transitions to deactivated.
+  ///
+  /// **Requires:**
+  /// * If [equals] is provided, [distinct] must be `true`.
+  /// * At least one lifecycle callback ([onActivated], [onPaused], [onResumed], or [onDeactivated]) must be non-null.
   CoralController.lateLifecycle({
     this.broadcast = false,
     bool distinct = true,
@@ -215,27 +255,35 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
 
   final _EntryCoral<T> _outbound;
 
+  /// Whether this controller exposes its outbound node through a 1:N [CoralBroadcaster].
   final bool broadcast;
 
   late final CoralProvider<T> _provider = broadcast ? CoralBroadcaster(_outbound) : CoralProvider.coral(_outbound);
 
+  /// The read-only [CoralProvider] facade exposing this controller's outbound [Coral].
   CoralProvider<T> get provider => _provider;
 
+  /// Whether the outbound node is currently activated by at least one downstream consumer.
   @override
   bool get isActivated => _outbound._state.isActivated;
 
+  /// Whether the outbound node is currently running (activated and not paused).
   @override
   bool get isRunning => _outbound._state.isRunning;
 
+  /// Whether the outbound node is temporarily paused.
   @override
   bool get isPaused => _outbound._state.isPaused;
 
+  /// Whether the outbound node is currently in the deactivated (inactive) state.
   @override
   bool get isDeactivated => _outbound._state.isDeactivated;
 
+  /// The read-only [Coral] node (or broadcaster branch when [broadcast] is `true`) exposed to downstream consumers.
   @override
   Coral<T> get coral => provider.coral;
 
+  /// The current [CoralSnapshot] held by this controller's root node.
   @override
   CoralSnapshot<T> get snapshot => _outbound.snapshot;
 
@@ -255,15 +303,11 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
   ///
   /// * [data]: The new data to inject.
   ///
-  /// **Requires:**
-  /// * If the controller was initialized with [CoralController.late], ensure this is called
-  ///   before downstream attempts to pull the data.
-  ///
   /// **Ensures:**
   /// * The data is encapsulated into an immutable [CoralSnapshot].
   /// * A "Dirty" flag is propagated down the topological graph to notify consumers.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
   /// final controller = CoralController<String>('initial');
   /// controller.set('new data');
@@ -282,7 +326,7 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
   /// * If [test] succeeds, valid data is injected.
   /// * If [test] throws, a damaged state is injected containing the error and stack trace.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
   /// final controller = CoralController<int>(0);
   /// controller.setGuarded(() => int.parse('invalid')); // Injects damaged state gracefully
@@ -308,14 +352,17 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
   /// **Ensures:**
   /// * A [CoralSnapshot.damaged] state is injected and propagated downstream.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
-  /// final controller = CoralController<String>.late();
-  /// try {
-  ///   final data = await fetchNetworkData();
-  ///   controller.set(data);
-  /// } catch (e, st) {
-  ///   controller.setError(e, st);
+  /// Future<String> fetchNetworkData() async => throw StateError('offline');
+  ///
+  /// Future<void> load(CoralController<String> controller) async {
+  ///   try {
+  ///     final data = await fetchNetworkData();
+  ///     controller.set(data);
+  ///   } catch (e, st) {
+  ///     controller.setError(e, st);
+  ///   }
   /// }
   /// ```
   void setError(Object error, [StackTrace? stackTrace]) {
@@ -330,7 +377,7 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
   /// **Ensures:**
   /// * A [CoralSnapshot.empty] state is injected and propagated downstream.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
   /// final controller = CoralController<List<String>>(['item1', 'item2']);
   /// // Clear the list and trigger an empty UI state
@@ -348,16 +395,16 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
 /// In the Coralline framework, downstream [Trunk] objects are strictly read-only and define
 /// an immutable flow of multi-line data. To dynamically update or replace the collection
 /// of [Coral] lines (e.g., adding/removing form fields, dynamic tab pipelines, etc.),
-/// an entity with write-access is required. [TrunkController] serves exactly this purpose
+/// an entity with write-access is required. [TrunkController] serves as this write-side entry point
 /// for [Trunk] bundles.
 ///
 /// **Design Philosophy:**
 /// - **Dynamic Collection Source**: Acts as an updatable root joint for a bundle of [Coral] lines.
 ///   Calling [set] or assigning [lines] updates the set of active lines in the trunk while
 ///   maintaining proper lifecycle coupling and detaching removed lines.
-/// - **Compile-time / Initialization Fail-Fast**: The constructors contain strict assertions.
-///   Using `lifecycle` constructors allows the controller to hook into activation and
-///   deactivation events, enabling efficient resource allocation only when active subscribers exist.
+/// - **Configurable Ownership & Swapping**: Supports both sealed (`seal: true`) and detachable
+///   (`seal: false`) line ownership, as well as coldswap (`hotswap: false`) and mooring-backed
+///   hotswap (`hotswap: true`) semantics when lines are replaced.
 ///
 /// **Intended Usage & Data Flow Architecture (Push-Dirty, Pull-Data):**
 /// Functions identically to [CoralController] within the Coralline framework's **Push-Dirty, Pull-Data**
@@ -377,6 +424,8 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
 ///
 /// * **BAD (Passing mutable lists that mutate externally without calling `.set`):**
 ///   ```dart
+///   final coralA = Coral.data(1);
+///   final coralB = Coral.data(2);
 ///   // Anti-pattern: Mutating the list in-place does NOT notify downstream subscribers
 ///   final mutableList = <Coral<int>>[coralA];
 ///   final controller = TrunkController<int>(mutableList);
@@ -384,13 +433,24 @@ base class CoralController<T> with CoralSnapshotDelegator<T> implements CoralPro
 ///   ```
 /// * **GOOD (Always update via controller methods to propagate dirty notifications):**
 ///   ```dart
+///   final coralA = Coral.data(1);
+///   final coralB = Coral.data(2);
+///   final controller = TrunkController<int>([coralA], hotswap: true);
 ///   // Recommended: Call .set() with the new list to trigger topological updates
 ///   controller.set([...controller.lines, coralB]);
 ///   ```
 ///
-/// **Example:**
+/// ## Examples
 /// ```dart
-/// final controller = TrunkController<String>([emailCoral, passwordCoral]);
+/// final emailCoral = Coral.data('user@example.com');
+/// final passwordCoral = Coral.data('secret');
+/// final phoneCoral = Coral.data('+1234567890');
+/// final smsCodeCoral = Coral.data('123456');
+///
+/// final controller = TrunkController<String>(
+///   [emailCoral, passwordCoral],
+///   hotswap: true,
+/// );
 ///
 /// // Dynamically replace lines (e.g., when switching login method)
 /// controller.set([phoneCoral, smsCodeCoral]);
@@ -405,6 +465,7 @@ base class TrunkController<T> with TrunkSnapshotDelegator<T> implements TrunkPro
   /// The pipeline becomes immediately valid and downstream consumers can pull
   /// data without exceptions.
   ///
+  /// * [lines]: The initial collection of [Coral] lines managed by this controller.
   /// * [seal]: If `true` (default), lines are permanently owned by this controller and
   ///   cannot be detached by another parent without explicit release.
   /// * [hotswap]: If `true`, supports hotswapping lines while active using a mooring point safeguard.
@@ -437,23 +498,30 @@ base class TrunkController<T> with TrunkSnapshotDelegator<T> implements TrunkPro
 
   final _UpdatableTrunk<T> _outbound;
 
+  /// The read-only [TrunkProvider] facade exposing this controller's outbound [Trunk].
   TrunkProvider<T> get provider => this;
 
+  /// Whether the outbound trunk is currently activated by a downstream consumer.
   @override
   bool get isActivated => _outbound._state.isActivated;
 
+  /// Whether the outbound trunk is currently running (activated and not paused).
   @override
   bool get isRunning => _outbound._state.isRunning;
 
+  /// Whether the outbound trunk is temporarily paused.
   @override
   bool get isPaused => _outbound._state.isPaused;
 
+  /// Whether the outbound trunk is currently in the deactivated (inactive) state.
   @override
   bool get isDeactivated => _outbound._state.isDeactivated;
 
+  /// The read-only [Trunk] bundle exposed to downstream consumers.
   @override
   Trunk<T> get trunk => _outbound;
 
+  /// The current [TrunkSnapshot] held by this controller's outbound trunk.
   @override
   TrunkSnapshot<T> get snapshot => _outbound.snapshot;
 
@@ -470,10 +538,6 @@ base class TrunkController<T> with TrunkSnapshotDelegator<T> implements TrunkPro
   /// Injects a new collection of lines into the pipeline.
   ///
   /// * [lines]: The new collection of [Coral<T>] lines to inject.
-  ///
-  /// **Requires:**
-  /// * If the controller was initialized with [TrunkController.late], ensure this is called
-  ///   before downstream attempts to pull the lines.
   ///
   /// **Ensures:**
   /// * A "Dirty" flag is propagated down the topological graph to notify consumers.

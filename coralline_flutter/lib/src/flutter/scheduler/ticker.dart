@@ -57,13 +57,23 @@ class _CorallineLifecycleTicker extends Ticker {
 /// **BAD:**
 /// ```dart
 /// // [Anti-Pattern] Omitting animation controller disposal in didDeactivate
-/// class LeakingAnimationModel extends CorallineLifecycleAware
-///     with CorallineBuildContextAware, TickerProviderCorallineLifecycleAwareMixin {
-///   late final AnimationController controller;
+/// base class LeakingAnimationComp extends BuildComponent
+///     with
+///         CorallineLifecycleAware,
+///         CorallineTerminalIntentAware,
+///         CorallineBuildContextAware,
+///         TickerProviderCorallineLifecycleAwareMixin {
+///   late final AnimationController controller = AnimationController(
+///     vsync: this,
+///     duration: const Duration(seconds: 1),
+///   );
 ///
-///   void init() {
-///     controller = AnimationController(vsync: this, duration: const Duration(seconds: 1));
-///   }
+///   @override
+///   @manifestSync
+///   Iterable<CoralNode> manifest() => [];
+///
+///   @override
+///   Widget build() => FadeTransition(opacity: controller, child: const SizedBox());
 ///   // didDeactivate is missing controller.dispose(), triggering a debug assertion error!
 /// }
 /// ```
@@ -71,39 +81,66 @@ class _CorallineLifecycleTicker extends Ticker {
 /// **GOOD:**
 /// ```dart
 /// // [Recommended] Explicitly dispose all controllers in didDeactivate before calling super
-/// class CleanAnimationModel extends CorallineLifecycleAware
-///     with CorallineBuildContextAware, TickerProviderCorallineLifecycleAwareMixin {
-///   late final AnimationController controller;
-///
-///   void init() {
-///     controller = AnimationController(vsync: this, duration: const Duration(seconds: 1));
-///   }
+/// base class CleanAnimationComp extends BuildComponent
+///     with
+///         CorallineLifecycleAware,
+///         CorallineTerminalIntentAware,
+///         CorallineBuildContextAware,
+///         TickerProviderCorallineLifecycleAwareMixin {
+///   late final AnimationController controller = AnimationController(
+///     vsync: this,
+///     duration: const Duration(seconds: 1),
+///   );
 ///
 ///   @override
 ///   void didDeactivate() {
 ///     controller.dispose();
 ///     super.didDeactivate();
 ///   }
+///
+///   @override
+///   @manifestSync
+///   Iterable<CoralNode> manifest() => [];
+///
+///   @override
+///   Widget build() => FadeTransition(opacity: controller, child: const SizedBox());
 /// }
 /// ```
 ///
 /// ## Examples
 /// ```dart
-/// class MultiAnimationController extends CorallineLifecycleAware
-///     with CorallineBuildContextAware, TickerProviderCorallineLifecycleAwareMixin {
-///   late final AnimationController controller1;
-///   late final AnimationController controller2;
-///
-///   void init() {
-///     controller1 = AnimationController(vsync: this, duration: const Duration(seconds: 1));
-///     controller2 = AnimationController(vsync: this, duration: const Duration(seconds: 2));
-///   }
+/// base class MultiAnimationComp extends BuildComponent
+///     with
+///         CorallineLifecycleAware,
+///         CorallineTerminalIntentAware,
+///         CorallineBuildContextAware,
+///         TickerProviderCorallineLifecycleAwareMixin {
+///   late final AnimationController fadeController = AnimationController(
+///     vsync: this,
+///     duration: const Duration(seconds: 1),
+///   );
+///   late final AnimationController scaleController = AnimationController(
+///     vsync: this,
+///     duration: const Duration(seconds: 2),
+///   );
 ///
 ///   @override
 ///   void didDeactivate() {
-///     controller1.dispose();
-///     controller2.dispose();
+///     fadeController.dispose();
+///     scaleController.dispose();
 ///     super.didDeactivate();
+///   }
+///
+///   @override
+///   @manifestSync
+///   Iterable<CoralNode> manifest() => [];
+///
+///   @override
+///   Widget build() {
+///     return ScaleTransition(
+///       scale: scaleController,
+///       child: FadeTransition(opacity: fadeController, child: const SizedBox()),
+///     );
 ///   }
 /// }
 /// ```
@@ -286,47 +323,90 @@ base mixin TickerProviderCorallineLifecycleAwareMixin
 /// **BAD:**
 /// ```dart
 /// // [Anti-Pattern] Attempting to create two tickers on a single-ticker mixin
-/// class DoubleAnimationModel extends CorallineLifecycleAware
-///     with CorallineBuildContextAware, SingleTickerProviderCorallineLifecycleAwareMixin {
+/// base class DoubleAnimationComp extends BuildComponent
+///     with
+///         CorallineLifecycleAware,
+///         CorallineTerminalIntentAware,
+///         CorallineBuildContextAware,
+///         SingleTickerProviderCorallineLifecycleAwareMixin {
 ///   late final AnimationController c1 = AnimationController(vsync: this);
 ///   late final AnimationController c2 = AnimationController(vsync: this); // Debug assertion error!
+///
+///   @override
+///   @manifestSync
+///   Iterable<CoralNode> manifest() => [];
+///
+///   @override
+///   Widget build() => const SizedBox();
 /// }
 /// ```
 ///
 /// **GOOD:**
 /// ```dart
 /// // [Recommended] Use SingleTickerProviderCorallineLifecycleAwareMixin strictly for 1 ticker
-/// class SingleAnimationModel extends CorallineLifecycleAware
-///     with CorallineBuildContextAware, SingleTickerProviderCorallineLifecycleAwareMixin {
-///   late final AnimationController controller;
-///
-///   void init() {
-///     controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-///   }
+/// base class SingleAnimationComp extends BuildComponent
+///     with
+///         CorallineLifecycleAware,
+///         CorallineTerminalIntentAware,
+///         CorallineBuildContextAware,
+///         SingleTickerProviderCorallineLifecycleAwareMixin {
+///   late final AnimationController controller = AnimationController(
+///     vsync: this,
+///     duration: const Duration(milliseconds: 300),
+///   );
 ///
 ///   @override
 ///   void didDeactivate() {
 ///     controller.dispose();
 ///     super.didDeactivate();
 ///   }
+///
+///   @override
+///   @manifestSync
+///   Iterable<CoralNode> manifest() => [];
+///
+///   @override
+///   Widget build() => FadeTransition(opacity: controller, child: const SizedBox());
 /// }
 /// ```
 ///
 /// ## Examples
 /// ```dart
-/// class SingleAnimationController extends CorallineLifecycleAware
-///     with CorallineBuildContextAware, SingleTickerProviderCorallineLifecycleAwareMixin {
-///   late final AnimationController controller;
+/// base class PulsingBadgeComp extends BuildComponent
+///     with
+///         CorallineLifecycleAware,
+///         CorallineTerminalIntentAware,
+///         CorallineBuildContextAware,
+///         SingleTickerProviderCorallineLifecycleAwareMixin {
+///   PulsingBadgeComp({required this.labelCoral});
+///   final Coral<String> labelCoral;
 ///
-///   void init() {
-///     controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+///   late final AnimationController pulseController = AnimationController(
+///     vsync: this,
+///     duration: const Duration(milliseconds: 400),
+///   );
+///
+///   @override
+///   void didActivate() {
+///     super.didActivate();
+///     pulseController.repeat(reverse: true);
 ///   }
 ///
 ///   @override
 ///   void didDeactivate() {
-///     controller.dispose();
+///     pulseController.dispose();
 ///     super.didDeactivate();
 ///   }
+///
+///   @override
+///   @manifestSync
+///   Iterable<CoralNode> manifest() => [labelCoral];
+///
+///   @override
+///   Widget build() => FadeTransition(
+///     opacity: pulseController,
+///     child: Text(labelCoral.data),
+///   );
 /// }
 /// ```
 base mixin SingleTickerProviderCorallineLifecycleAwareMixin

@@ -1,6 +1,6 @@
 # Coralline Flutter (Coralline) Architecture Deep Dive
 
-The Coralline Flutter (and its core engine, Coralline) framework is a **next-generation reactive framework** designed to overcome the limitations of common legacy state management models (MVC, MVP, MVVM). The core architecture penetrating this framework is a combination of the **MVI (Model-View-Intent)** philosophy and a **Topological Reactive DAG (Directed Acyclic Graph)**.
+The Coralline Flutter (and its core engine, Coralline) framework is a **reactive state management framework** designed to address structural limitations of traditional state management models (MVC, MVP, MVVM). The core architecture penetrating this framework is a combination of the **MVI (Model-View-Intent)** philosophy and a **Topological Reactive DAG (Directed Acyclic Graph)**.
 
 This document deeply analyzes what model the Coralline Flutter framework is based on, and how it structurally differs from existing models.
 
@@ -14,8 +14,8 @@ Coralline Flutter goes beyond the limits of MVVM, which simply binds data to Vie
 The Coralline Flutter pipeline is a topological graph consisting of the following key nodes. (This model shares the same trajectory as React's `Recoil`, `Jotai`, or Flutter's `Riverpod`.)
 
 *   **`CoralController` (Wellspring, Root)**: The starting point of data. When a change occurs, it sends a wave (Signal) downstream.
-*   **`CoralComputation` (Derived Node)**: A pure function node that transforms/derives data in the middle via `cascade`, `diverge`, etc.
-*   **`Trunk` / `converge` (Bundle Node)**: Serves to bundle multiple branches of data into one.
+*   **`CoralComputation` & Operators (Derived Nodes)**: Pure derivation nodes that transform or derive data via `SimplexComputation` / `ComplexComputation` (`compute()`) or inline operators (`map`, `cascade`, `diverge`).
+*   **`Trunk` & `converge` / `combine` (Multi-Line Bundle & Reduction)**: `Trunk` bundles multiple `Coral` lines into a single topological unit, while `converge`, `aggregate`, and `combine` reduce a `Trunk` into a single downstream `Coral`.
 *   **`CoralCoupler` (Dynamic Router)**: A node that allows you to disconnect a part of the pipeline or newly connect it (Hot/Cold swap) at runtime.
 *   **`CoralTerminal` (Endpoint, Sink)**: The entry point that finally binds to the UI (Widget) and renders data to the screen.
 
@@ -25,21 +25,21 @@ Conversely, context changes in the UI layer or user requirements are passed **Up
 
 > [!NOTE]
 > **Intent Firewall (Structural Intent Firewall)**
-> A chronic problem often occurring in MVI architectures is the contradiction where multiple Views share a single Model (1:N), and each View sends up a different Intent, causing a collision. Coralline Flutter's `CoralBroadcaster` does not forcibly filter and 'block' this at runtime. By design, at the divergence point where a 1:N topology is formed, downstream Intents are topologically severed from passing upstream. It provides a **beautiful topology structure designed so that contradictory Intent collisions fundamentally cannot occur**.
+> A common issue in MVI architectures is the contradiction where multiple Views share a single Model (1:N), and each View sends up a different Intent, causing a collision. Coralline's `CoralBroadcaster` acts as an intent firewall: downstream terminal intents are isolated at the 1:N broadcaster boundary and do not propagate upstream, and attaching a `CorallineTerminalIntentAware` node upstream of a broadcaster throws a `CorallineTopologyError` in debug mode.
 
 ---
 
 ## 2. Core Engine: Push-Dirty, Pull-Data (Lazy Computation)
 
-Legacy `Stream`, `RxDart`, and `ValueNotifier` based architectures use a **Synchronous Push model** that pushes data through transformations (Map/Filter) down to the View unconditionally whenever data changes. When tens to hundreds of updates occur per second, this triggers a so-called **Synchronous Flood**, causing UI frame drops and severe battery drain.
+Eager push-based pipelines evaluate transformations (such as map or filter) as values are emitted. Under high-frequency updates, evaluating intermediate derived values that are never rendered can add unnecessary work before the next frame.
 
-Coralline Flutter adopted a **Lazy-Computation** model that completely flips this.
+Coralline Flutter uses a **Lazy-Computation** model that separates invalidation from data evaluation.
 
 ### Phase 1: Push-Dirty (Lightweight Signal Propagation)
-When data changes, instead of passing heavy data payloads to downstream nodes, it simply plants an O(1) flag (Boolean) saying **"The cached data you hold is now obsolete (Dirty)."** No matter how many times this process occurs, the computational cost is close to zero.
+When data changes, instead of passing derived data payloads through downstream nodes, it marks dependent nodes dirty so they know their cached snapshot is obsolete.
 
 ### Phase 2: Automatic Debouncing (Coalescing)
-Even if 1,000 data changes arrive before the UI renders the screen, the 999 signals following the first Dirty signal are ignored (absorbed).
+For lazy downstream pipelines without eager `.distinct()` clearance, `_EntryCoral` sets `_isPullPending = true` on the first dirty push and coalesces subsequent controller updates until a consumer pulls `.snapshot` on the next frame.
 
 ### Phase 3: Pull-Data (UI-Driven Data Pulling)
 Only when the `CoralTerminal` (UI) is ready to draw the screen in sync with the device's refresh rate (e.g., 60Hz), does it **traverse backward up the pipeline**, pull the latest data, and perform the heavy computation (Formatting, etc.) exactly once.

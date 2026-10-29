@@ -12,14 +12,23 @@ part of '../coralline.dart';
 /// and guarantees pipeline-level null safety.
 @immutable
 sealed class CorallineSnapshot {
+  /// Whether this snapshot is in the uninitialized (`empty`) state.
   bool get isEmpty;
 
+  /// Whether this snapshot is in the error (`damaged`) state.
   bool get isDamaged;
 
+  /// Whether this snapshot contains valid payload data (`!isEmpty && !isDamaged`).
   bool get isValid;
 
+  /// The error object stored when [isDamaged] is `true`.
+  ///
+  /// Throws a [CoralSnapshotStateException] if accessed when [isDamaged] is `false`.
   Object get error;
 
+  /// The stack trace associated with [error] when [isDamaged] is `true`.
+  ///
+  /// Throws a [CoralSnapshotStateException] if accessed when [isDamaged] is `false`.
   StackTrace get stackTrace;
 }
 
@@ -28,16 +37,26 @@ sealed class CorallineSnapshot {
 /// Implementing this interface allows nodes (such as [Coral] and [Trunk]) to expose
 /// snapshot status accessors directly on their own instances.
 abstract interface class CorallineSnapshotDelegator<S extends CorallineSnapshot> {
+  /// The current underlying [CorallineSnapshot] represented by this delegator.
   S get snapshot;
 
+  /// Whether the underlying [snapshot] is in the uninitialized (`empty`) state.
   bool get isEmpty;
 
+  /// Whether the underlying [snapshot] is in the error (`damaged`) state.
   bool get isDamaged;
 
+  /// Whether the underlying [snapshot] contains valid payload data.
   bool get isValid;
 
+  /// The error object of the underlying [snapshot] when [isDamaged] is `true`.
+  ///
+  /// Throws a [CoralSnapshotStateException] if accessed when [isDamaged] is `false`.
   Object get error;
 
+  /// The stack trace of the underlying [snapshot] when [isDamaged] is `true`.
+  ///
+  /// Throws a [CoralSnapshotStateException] if accessed when [isDamaged] is `false`.
   StackTrace get stackTrace;
 }
 

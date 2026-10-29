@@ -21,9 +21,9 @@ part of '../coralline.dart';
 /// this library. Always inherit from either [SimplexComputation] (for 1:1 single inbound)
 /// or [ComplexComputation] (for N:1 multi inbound).
 ///
-/// **Example:**
+/// ## Examples
 /// ```dart
-/// class MultiplyComputation extends SimplexComputation<int> {
+/// base class MultiplyComputation extends SimplexComputation<int> {
 ///   MultiplyComputation(this.source, this.factor);
 ///   final Coral<int> source;
 ///   final int factor;
@@ -37,6 +37,7 @@ part of '../coralline.dart';
 /// }
 /// ```
 sealed class CoralComputation<T> implements CoralProvider<T> {
+  /// Creates a base [CoralComputation].
   CoralComputation();
 
   Coral<T> get _baseCoral;
@@ -66,7 +67,7 @@ sealed class CoralComputation<T> implements CoralProvider<T> {
   @pragma('vm:prefer-inline')
   bool get isPaused => coral._state.isPaused;
 
-  /// Indicates whether the underlying topological node is currently deactivated.
+  /// Indicates whether the underlying topological node is currently in the deactivated (inactive) state.
   @override
   @pragma('vm:prefer-inline')
   bool get isDeactivated => coral._state.isDeactivated;
@@ -101,12 +102,16 @@ sealed class CoralComputation<T> implements CoralProvider<T> {
 /// * Methods marked with `@pragma('vm:prefer-inline')` provide an inlining hint to supported Dart runtimes.
 ///
 /// **Implementation note:**
-/// Use [SimplexComputation] whenever a computation has exactly one upstream source.
-/// If your node requires multiple dependencies or dynamic manifest lists, use [ComplexComputation].
+/// * Use [SimplexComputation] whenever a computation has exactly one upstream source.
+///   If your node requires multiple dependencies or dynamic manifest lists, use [ComplexComputation].
+/// * **Constructor Ordering**: [manifest] is invoked synchronously inside the `SimplexComputation()`
+///   super constructor before a subclass constructor body executes. Every field accessed inside
+///   [manifest] MUST be initialized via formal constructor parameters (`this.field`) or a constructor
+///   initializer list (`: field = ...`), never inside the constructor body.
 ///
-/// **Example:**
+/// ## Examples
 /// ```dart
-/// class DoubleComputation extends SimplexComputation<int> {
+/// base class DoubleComputation extends SimplexComputation<int> {
 ///   DoubleComputation(this.source);
 ///   final Coral<int> source;
 ///
@@ -119,6 +124,10 @@ sealed class CoralComputation<T> implements CoralProvider<T> {
 /// }
 /// ```
 abstract base class SimplexComputation<T> extends CoralComputation<T> {
+  /// Initializes this 1:1 computation and synchronously invokes [manifest] to attach its inbound dependency.
+  ///
+  /// **Requires:**
+  /// * Any subclass fields referenced inside [manifest] must be initialized in the parameter list or initializer list before `super()` runs.
   SimplexComputation() {
     _baseCoral = _SimplexComputationCoral.create(this);
   }
@@ -162,10 +171,14 @@ abstract base class SimplexComputation<T> extends CoralComputation<T> {
 /// * **Pure Function Constraint**: The [compute] method MUST be pure and synchronous.
 ///   Do not perform side-effects (e.g., UI updates, network calls) inside [compute].
 /// * **Manifest Alignment**: Every node accessed inside [compute] MUST be returned in [manifest].
+/// * **Constructor Ordering**: [manifest] is invoked synchronously inside the `ComplexComputation()`
+///   super constructor before a subclass constructor body executes. Every field accessed inside
+///   [manifest] MUST be initialized via formal constructor parameters (`this.field`) or a constructor
+///   initializer list (`: field = ...`), never inside the constructor body.
 ///
-/// **Example:**
+/// ## Examples
 /// ```dart
-/// class SumComputation extends ComplexComputation<int> {
+/// base class SumComputation extends ComplexComputation<int> {
 ///   SumComputation(this.a, this.b);
 ///   final Coral<int> a;
 ///   final Coral<int> b;
@@ -179,6 +192,10 @@ abstract base class SimplexComputation<T> extends CoralComputation<T> {
 /// }
 /// ```
 abstract base class ComplexComputation<T> extends CoralComputation<T> {
+  /// Initializes this N:1 computation and synchronously invokes [manifest] to attach its inbound dependencies.
+  ///
+  /// **Requires:**
+  /// * Any subclass fields referenced inside [manifest] must be initialized in the parameter list or initializer list before `super()` runs.
   ComplexComputation() {
     _baseCoral = _ComplexComputationCoral.create(this);
   }
@@ -215,29 +232,41 @@ abstract base class ComplexComputation<T> extends CoralComputation<T> {
 /// **Implementation note:**
 /// * **Synchronous Teardown**: [didDeactivate] MUST cleanly and synchronously release any
 ///   resources allocated during [didActivate].
-/// * **Broadcaster Ref-Counting**: When routed through a `CoralBroadcaster` (1:N split),
+/// * **Broadcaster Ref-Counting**: When routed through a [CoralBroadcaster] (1:N split),
 ///   [didActivate] triggers when the first terminal attaches, and [didDeactivate] triggers
 ///   when the last terminal detaches.
 ///
-/// **Example:**
+/// ## Examples
 /// ```dart
-/// class LocationComputation extends ComplexComputation<Location>
+/// class GpsService {
+///   String currentLocation = '0,0';
+///   void startUpdates() {}
+///   void stopUpdates() {}
+/// }
+///
+/// base class LocationComputation extends ComplexComputation<String>
 ///     with CorallineLifecycleAware {
 ///   LocationComputation(this.gpsService);
 ///   final GpsService gpsService;
 ///
 ///   @override
-///   void didActivate() => gpsService.startUpdates();
+///   void didActivate() {
+///     super.didActivate();
+///     gpsService.startUpdates();
+///   }
 ///
 ///   @override
-///   void didDeactivate() => gpsService.stopUpdates();
+///   void didDeactivate() {
+///     gpsService.stopUpdates();
+///     super.didDeactivate();
+///   }
 ///
 ///   @override
 ///   @manifestSync
 ///   Iterable<CoralNode> manifest() => [];
 ///
 ///   @override
-///   Location compute() => gpsService.currentLocation;
+///   String compute() => gpsService.currentLocation;
 /// }
 /// ```
 base mixin CorallineLifecycleAware {
@@ -273,31 +302,41 @@ base mixin CorallineLifecycleAware {
 ///
 /// **Implementation note:**
 /// * **Broadcaster Firewall Constraint**: Computations mixing in [CorallineTerminalIntentAware]
-///   MUST be positioned downstream of any `CoralBroadcaster`. Broadcasters act as intent firewalls
+///   MUST be positioned downstream of any [CoralBroadcaster]. Broadcasters act as intent firewalls
 ///   and block intent propagation upstream to prevent 1:N parameter collisions.
 /// * **Null Intent Safety**: Downstream terminals may send `null` intents. Always handle `null`
 ///   gracefully inside [didUpdateIntent].
 ///
-/// **Example:**
+/// ## Examples
 /// ```dart
-/// class AdaptiveImageComputation extends ComplexComputation<Image>
+/// final class TargetResolutionIntent extends CorallineTerminalIntent {
+///   TargetResolutionIntent(this.scale);
+///   final int scale;
+/// }
+///
+/// base class AdaptiveImageComputation extends SimplexComputation<int>
 ///     with CorallineTerminalIntentAware {
 ///   AdaptiveImageComputation(this.source);
-///   final Coral<Image> source;
+///   final Coral<int> source;
+///   int _scale = 1;
 ///
 ///   @override
-///   void didUpdateIntent({CorallineTerminalIntent? oldIntent, CorallineTerminalIntent? newIntent}) {
+///   void didUpdateIntent({
+///     CorallineTerminalIntent? oldIntent,
+///     CorallineTerminalIntent? newIntent,
+///   }) {
+///     super.didUpdateIntent(oldIntent: oldIntent, newIntent: newIntent);
 ///     if (newIntent is TargetResolutionIntent) {
-///       _setResolution(newIntent.resolution);
+///       _scale = newIntent.scale;
 ///     }
 ///   }
 ///
 ///   @override
 ///   @manifestSync
-///   Iterable<CoralNode> manifest() => [source];
+///   CoralNode manifest() => source;
 ///
 ///   @override
-///   Image compute() => _processImage(source.data);
+///   int compute() => source.data * _scale;
 /// }
 /// ```
 base mixin CorallineTerminalIntentAware {

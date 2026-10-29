@@ -25,7 +25,9 @@ This document summarizes selected APIs exported by `package:coralline/coralline.
   - `.map<R>(R Function(T) mapper)`: Synchronous transformation node.
   - `.cascade<R>(Coral<R> Function(T) cascade, {bool seal, bool hotswap, bool eager})`: 1:1 dynamic pipeline swapping node.
   - `.diverge<R>(Iterable<Coral<R>> Function(T) cascade, {bool seal, bool hotswap, bool eager})`: 1:N dynamic topological divergence node yielding a `Trunk<R>`.
-  - `.guard({required bool Function() canProceed, Object? Function()? getReasonIfCannotProceed})`: Adds a condition for whether the guarded computation can proceed.
+  - `.guard({required bool Function() canProceed, Object? Function()? getReason})`: Adds a condition for whether the guarded computation can proceed (transitions to `CoralSnapshot.empty()` if `getReason` is `null` or returns `null`, or `CoralSnapshot.damaged(reason)` otherwise).
+  - `.fallback({T Function()? onEmpty, T Function(Object error, StackTrace stackTrace)? onDamage})`: Replaces empty or damaged states with fallback values.
+  - `.distinct([bool Function(T previous, T next)? equals])`: Suppresses downstream dirty notifications when the newly computed value equals the previous value.
   - `.toTerminal(onDirty)`: Connects a terminal subscriber.
   - `.toBroadcaster()`: Converts 1:1 pipeline to 1:N broadcaster node.
 

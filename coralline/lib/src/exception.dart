@@ -23,6 +23,7 @@ part of '../coralline.dart';
 ///   during development, forcing immediate topology correction rather than attempting to recover.
 @pragma('flutter:keep-to-string-in-subtypes')
 abstract class CorallineException implements Exception {
+  /// Creates a recoverable Coralline framework exception.
   const CorallineException();
 }
 
@@ -30,9 +31,16 @@ abstract class CorallineException implements Exception {
 ///
 /// Occurs when trying to release or detach a node that is not currently attached to the joint.
 class CoralNodeReleaseViolationException extends CorallineException {
+  /// Creates a [CoralNodeReleaseViolationException] for [coralNode] and [joint].
+  ///
+  /// * [joint]: The parent joint or container that attempted the invalid release.
+  /// * [coralNode]: The node whose ownership rule was violated.
   const CoralNodeReleaseViolationException(this.joint, this.coralNode);
 
+  /// The parent joint or container that attempted the invalid release.
   final Object joint;
+
+  /// The [CoralNode] whose single-ownership contract was violated.
   final CoralNode coralNode;
 
   @override
@@ -48,9 +56,15 @@ class CoralNodeReleaseViolationException extends CorallineException {
 
 /// Thrown when attempting to extract data from an uninitialized or damaged snapshot state.
 ///
-/// Fails fast when accessing `.data` on an [CoralSnapshot.isEmpty] or [CoralSnapshot.isDamaged]
-/// state of a [CoralSnapshot] or [TrunkSnapshot].
+/// Fails fast when accessing [CoralSnapshot.data] or [TrunkSnapshot.lines] on an
+/// [CorallineSnapshot.isEmpty] or [CorallineSnapshot.isDamaged] snapshot.
 class CoralSnapshotExtractionException extends CorallineException {
+  /// Creates a [CoralSnapshotExtractionException] describing an invalid extraction attempt.
+  ///
+  /// * [state]: A human-readable description of the invalid snapshot state (e.g., `'Empty'` or `'Damaged'`).
+  /// * [details]: Diagnostic context describing the snapshot instance.
+  /// * [error]: The underlying error cause when extracting from a `damaged` snapshot.
+  /// * [stackTrace]: The stack trace associated with [error], if available.
   const CoralSnapshotExtractionException(
     this.state,
     this.details, {
@@ -58,9 +72,16 @@ class CoralSnapshotExtractionException extends CorallineException {
     this.stackTrace,
   });
 
+  /// The name of the invalid snapshot state from which extraction was attempted.
   final String state;
+
+  /// Diagnostic context describing the snapshot instance.
   final String details;
+
+  /// The original pipeline error cause if the snapshot was in a `damaged` state.
   final Object? error;
+
+  /// The original stack trace if the snapshot was in a `damaged` state.
   final StackTrace? stackTrace;
 
   @override
@@ -96,12 +117,19 @@ class CoralSnapshotExtractionException extends CorallineException {
 
 /// Thrown when attempting to query state metadata incompatible with the current snapshot state.
 ///
-/// Fails when inspecting [CoralSnapshot.error] or [CoralSnapshot.stackTrace]
-/// from a snapshot state where it does not exist (e.g., querying error on a valid snapshot).
+/// Fails when inspecting [CorallineSnapshot.error] or [CorallineSnapshot.stackTrace]
+/// from a snapshot state where it does not exist (e.g., querying error on a valid or empty snapshot).
 class CoralSnapshotStateException extends CorallineException {
+  /// Creates a [CoralSnapshotStateException] for an incompatible metadata query.
+  ///
+  /// * [state]: A human-readable description of the current snapshot state.
+  /// * [details]: Diagnostic context describing the invalid metadata access.
   const CoralSnapshotStateException(this.state, this.details);
 
+  /// The name of the snapshot state on which the incompatible query occurred.
   final String state;
+
+  /// Diagnostic context describing the invalid metadata access.
   final String details;
 
   @override
@@ -119,6 +147,9 @@ class CoralSnapshotStateException extends CorallineException {
 ///
 /// This is a programmatic error indicating a cyclic update or structural bug.
 class CoralNodeReentrancyError extends StateError {
+  /// Creates a [CoralNodeReentrancyError] with an optional diagnostic [message].
+  ///
+  /// * [message]: Details describing the reentrant notification violation.
   CoralNodeReentrancyError([String? message]) : super(message ?? 'Reentrant call to _pushDirty detected.');
 
   @override
@@ -136,10 +167,14 @@ class CoralNodeReentrancyError extends StateError {
       'an asynchronous event loop delay.';
 }
 
-/// **Core Concept:**
-/// Thrown when a topological error is detected during graph construction or attachment,
-/// such as placing an intent-aware Computation upstream of a broadcaster.
+/// Thrown when a topological error is detected during graph construction or attachment.
+///
+/// Typically occurs in debug mode when a [CorallineTerminalIntentAware] computation
+/// is placed upstream of a [CoralBroadcaster], which acts as an intent firewall.
 class CorallineTopologyError extends StateError {
+  /// Creates a [CorallineTopologyError] with an optional diagnostic [message].
+  ///
+  /// * [message]: Details describing the topological violation.
   CorallineTopologyError([String? message]) : super(message ?? 'Intent Firewall Violation detected.');
 
   @override
@@ -152,13 +187,18 @@ class CorallineTopologyError extends StateError {
       'the broadcaster) so it can safely listen to private UI intents.';
 }
 
-/// **Core Concept:**
-/// Thrown when a snapshot or computation query is executed on a dormant or deactivated [_BroadcasterLine].
-/// This is a Fail-Fast lifecycle contract violation specific to broadcaster lines.
+/// Thrown when a snapshot or data query is executed on a dormant or deactivated [CoralBroadcaster.coral] branch node.
+///
+/// This is a fail-fast lifecycle contract violation specific to broadcaster branch lines.
 class CoralBroadcasterLineDormantAccessError extends StateError {
+  /// Creates a [CoralBroadcasterLineDormantAccessError] for the dormant branch [node].
+  ///
+  /// * [node]: The dormant branch [CoralNode] that was queried while not running.
+  /// * [details]: An optional message describing the failed access.
   CoralBroadcasterLineDormantAccessError(this.node, [String? details])
       : super(details ?? 'snapshot accessed on a dormant broadcaster line node.');
 
+  /// The dormant branch [CoralNode] on which the invalid access was attempted.
   final CoralNode node;
 
   @override

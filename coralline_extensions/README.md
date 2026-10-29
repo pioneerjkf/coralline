@@ -11,17 +11,19 @@ The official extension library for the [Coralline](https://pub.dev/packages/cora
 - **Aggregations & Statistics**:
   - `coral.elements.sum`: Reactively computes the sum of `num`, `int`, or `double` collections.
   - `coral.elements.average`: Reactively computes the arithmetic mean.
-- **Comparable Extrema**:
+- **Comparable Extrema & Natural Sorting**:
   - `coral.elements.minOrNull`: Reactively tracks the minimum element.
   - `coral.elements.maxOrNull`: Reactively tracks the maximum element.
-- **Transformations & Filtering**:
-  - `coral.elements.where(predicate)`: Reactive filtering pipeline node.
-  - `coral.elements.map(transform)`: Reactive projection pipeline node.
+  - `coral.elements.sorted`: Reactively maintains an ascending sorted list of `Comparable` elements.
+- **Transformations, Indexing & Filtering**:
+  - `coral.elements.whereNot(test)` / `coral.elements.whereIndexed(test)`: Reactive negated and indexed filtering nodes (complementing core `coral.elements.where(test)`).
+  - `coral.elements.mapIndexed(convert)`: Reactive indexed projection node (complementing core `coral.elements.map(convert)`).
   - `coral.elements.firstWhereOrNull(test)`: Safe search yielding `null` when not found.
+  - `coral.elements.sorted(compare)`: Reactively sorts an iterable using a custom comparator `compare`.
 - **List Operations**:
-  - `coral.elements.sorted([compare])`: Reactively maintains a sorted view.
-  - `coral.elements.binarySearch(element, [compare])`: Binary search over sorted collections.
-  - `coral.elements.lowerBound(element, [compare])`: Lower bound search index.
+  - `coral.elements.sortedRange(start, end, [compare])`: Reactively sorts a range of list elements.
+  - `coral.elements.binarySearch(element, [compare])`: Binary search over sorted lists.
+  - `coral.elements.lowerBound(element, [compare])`: Lower bound search index over sorted lists.
 
 ---
 

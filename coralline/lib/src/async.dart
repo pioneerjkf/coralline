@@ -12,41 +12,50 @@ part of '../coralline.dart';
 extension FutureCoralExtension<T> on Future<T> {
   /// Converts this [Future] into a reactive [Coral] node.
   ///
-  /// Subscription to the [Future] (`.then`) is deferred until the returned [Coral]
-  /// node is activated, avoiding unnecessary execution of asynchronous logic before the
-  /// data is actually needed.
+  /// While a Dart [Future] begins executing immediately upon creation, attaching
+  /// the completion listener (`.then`) and propagating its result into the reactive
+  /// graph is deferred until the returned [Coral] node is activated. Until the
+  /// [Future] completes after activation, the returned node remains in the `empty`
+  /// state (`isEmpty == true`).
   ///
   /// **Ensures:**
-  /// * Returns a [Coral] node that completes when this [Future] completes.
-  /// * On success, the node carries the computed value of the [Future].
-  /// * On error, the node transitions into a damaged state, propagating the [Exception] and [StackTrace].
+  /// * Returns a [Coral] node that starts in the `empty` state and updates when this [Future] completes.
+  /// * On success, the node transitions to a `valid` state carrying the resolved value of the [Future].
+  /// * On error, the node transitions into a `damaged` state, capturing the thrown error ([Object]) and [StackTrace].
   ///
-  /// **Example (Basic):**
+  /// ## Examples
+  ///
+  /// Basic usage:
   /// ```dart
   /// final myFuture = Future.value(42);
   /// final coral = myFuture.toCoral();
-  /// // The Future has NOT started propagating data yet.
+  /// // The completion listener has NOT been attached yet (coral.isEmpty == true).
   ///
   /// final terminal = coral.toTerminal(() {});
-  /// terminal.activate(); // Now the Future is actively observed.
+  /// terminal.activate(); // Now the Future completion is observed.
   /// ```
   ///
-  /// **Example (Advanced Real-World Usage):**
+  /// Chaining asynchronous resources in a reactive pipeline:
   /// ```dart
-  /// // Asynchronously open a file, resolve the Future into a file handle,
-  /// // and then asynchronously read a chunk of data, all within a reactive pipeline.
-  /// final fileFutureCoral = Coral.resource(
-  ///   create: () => File('data.txt').open(mode: FileMode.read),
-  ///   dispose: (fileFuture) => fileFuture.then((file) => file.close()),
+  /// class AsyncSession {
+  ///   Future<String> fetchChunk(int length) async => 'chunk($length)';
+  ///   Future<void> close() async {}
+  /// }
+  ///
+  /// // Asynchronously open a session, resolve the Future into a session handle,
+  /// // and then asynchronously read a chunk of data within a reactive pipeline.
+  /// final sessionFutureCoral = Coral.resource(
+  ///   create: () => Future.value(AsyncSession()),
+  ///   dispose: (sessionFuture) => sessionFuture.then((s) => s.close()),
   /// );
   ///
-  /// // The resulting contentCoral has type Coral<Uint8List>,
+  /// // The resulting contentCoral has type Coral<String>,
   /// // cleanly abstracting away all intermediate Futures.
-  /// final Coral<Uint8List> contentCoral = fileFutureCoral
-  ///   // Cascade 1: Convert the Future<RandomAccessFile> into a reactive Coral
-  ///   .cascade((fileFuture) => fileFuture.toCoral())
-  ///   // Cascade 2: Read from the resolved file, converting the new Future into a Coral
-  ///   .cascade((file) => file.read(1024).toCoral());
+  /// final Coral<String> contentCoral = sessionFutureCoral
+  ///   // Cascade 1: Convert the Future<AsyncSession> into a reactive Coral
+  ///   .cascade((sessionFuture) => sessionFuture.toCoral())
+  ///   // Cascade 2: Read from the resolved session, converting the new Future into a Coral
+  ///   .cascade((session) => session.fetchChunk(1024).toCoral());
   /// ```
   Coral<T> toCoral() => _DeLorean(this).coral;
 }
@@ -55,11 +64,19 @@ extension FutureCoralExtension<T> on Future<T> {
 extension FutureCollectionTrunkExtension<T> on Iterable<Future<T>> {
   /// Converts this collection of [Future]s into a unified [Trunk] of [Coral]s.
   ///
-  /// This is useful for grouping multiple concurrent asynchronous tasks
-  /// into a single lifecycle-managed topological bundle.
+  /// This groups multiple concurrent asynchronous tasks into a single
+  /// lifecycle-managed topological bundle. Each child [Coral] starts in the
+  /// `empty` state until its corresponding [Future] completes after activation.
   ///
   /// **Ensures:**
   /// * Returns a [Trunk] containing [Coral] nodes created from each [Future] in this collection.
+  ///
+  /// ## Examples
+  /// ```dart
+  /// final futures = [Future.value(10), Future.value(20)];
+  /// final trunk = futures.toTrunk();
+  /// final sumCoral = trunk.combine((values) => values.reduce((a, b) => a + b));
+  /// ```
   Trunk<T> toTrunk() => Trunk.of(map((future) => _DeLorean(future).coral));
 }
 
@@ -72,45 +89,55 @@ extension StreamCoralExtension<T> on Stream<T> {
   /// Converts this [Stream] into a reactive [Coral] node.
   ///
   /// Subscription to the [Stream] is deferred until the returned [Coral] node
-  /// is activated, and is automatically cancelled when the node is deactivated,
-  /// preventing resource and memory leaks.
+  /// is activated, is automatically paused and resumed with the node's lifecycle,
+  /// and is cancelled when the node is deactivated. Before the first event is
+  /// emitted, the returned [Coral] node remains in the `empty` state (`isEmpty == true`).
   ///
   /// * [cancelOnError]: If `true`, the underlying subscription is cancelled immediately if an error occurs.
   /// * [distinct]: If `true`, identical consecutive events are ignored.
-  /// * [equals]: A custom equality function to compare the previous and next events when [distinct] is true.
+  /// * [equals]: A custom equality function to compare the previous and next events when [distinct] is `true`.
+  ///
+  /// **Requires:**
+  /// * If [equals] is provided, [distinct] must be `true`.
   ///
   /// **Ensures:**
-  /// * Returns a [Coral] node that reflects the events of this [Stream].
-  /// * Automatically listens to the [Stream] on activation and cancels the subscription on deactivation.
+  /// * Returns a [Coral] node that starts in the `empty` state and reflects the events of this [Stream].
+  /// * Automatically listens to the [Stream] on activation, pauses/resumes with lifecycle transitions, and cancels the subscription on deactivation.
   ///
-  /// **Example (Basic):**
+  /// ## Examples
+  ///
+  /// Basic usage:
   /// ```dart
-  /// final myStream = Stream.periodic(Duration(seconds: 1), (i) => i);
+  /// final myStream = Stream.periodic(const Duration(seconds: 1), (i) => i);
   /// final coral = myStream.toCoral(distinct: true);
   ///
-  /// final terminal = coral.toTerminal(() => setState(() {}));
+  /// final terminal = coral.toTerminal(() {
+  ///   if (coral.isValid) {
+  ///     print('Tick: ${coral.data}');
+  ///   }
+  /// });
   /// terminal.activate(); // Starts listening to the stream
   ///
   /// // Later...
-  /// terminal.deactivate(); // Automatically cancels the stream subscription!
+  /// terminal.deactivate(); // Automatically cancels the stream subscription
   /// ```
   ///
-  /// **Example (Advanced Real-World Usage):**
+  /// Cascading a managed client resource into a reactive stream:
   /// ```dart
-  /// // Safely manage an HTTP client for a streaming connection
-  /// final httpClientCoral = Coral.resource(
-  ///   create: () => HttpClient(),
-  ///   dispose: (client) => client.close(force: true),
+  /// class EventClient {
+  ///   Future<Stream<String>> connect(Uri uri) async => Stream.value('connected:$uri');
+  ///   void close() {}
+  /// }
+  ///
+  /// final clientCoral = Coral.resource(
+  ///   create: () => EventClient(),
+  ///   dispose: (client) => client.close(),
   /// );
   ///
-  /// // Fetch the HTTP response asynchronously, then cascade to convert
-  /// // the resulting byte Stream into a reactive Coral node.
-  /// final streamCoral = httpClientCoral.cascade((client) {
-  ///   final responseFuture = client.getUrl(Uri.parse('https://api.example.com/stream'))
-  ///       .then((request) => request.close());
-  ///
+  /// final streamCoral = clientCoral.cascade((client) {
+  ///   final responseFuture = client.connect(Uri.parse('https://api.example.com/stream'));
   ///   return responseFuture.toCoral().cascade(
-  ///     (responseStream) => responseStream.toCoral(),
+  ///     (eventStream) => eventStream.toCoral(),
   ///   );
   /// });
   /// ```
@@ -133,16 +160,20 @@ extension StreamControllerCoralExtension<T> on StreamController<T> {
   ///
   /// Subscription to the underlying stream is deferred until the returned [Coral] node
   /// is activated, and is automatically cancelled when the node is deactivated.
+  /// Before the first event is emitted, the returned node remains in the `empty` state.
   ///
   /// * [cancelOnError]: If `true`, the underlying subscription is cancelled immediately if an error occurs.
   /// * [distinct]: If `true`, identical consecutive events are ignored.
-  /// * [equals]: A custom equality function to compare the previous and next events when [distinct] is true.
+  /// * [equals]: A custom equality function to compare the previous and next events when [distinct] is `true`.
+  ///
+  /// **Requires:**
+  /// * If [equals] is provided, [distinct] must be `true`.
   ///
   /// **Ensures:**
   /// * Returns a [Coral] node that reflects the events sent to this [StreamController].
   /// * Automatically listens to the stream on activation and cancels the subscription on deactivation.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
   /// final controller = StreamController<int>();
   /// final coral = controller.toCoral();
@@ -170,14 +201,25 @@ extension StreamCollectionTrunkExtension<T> on Iterable<Stream<T>> {
   ///
   /// This bundles multiple distinct event streams into a single topology node,
   /// automatically managing the lazy subscriptions and cleanup of every stream
-  /// simultaneously based on the [Trunk]'s lifecycle.
+  /// simultaneously based on the [Trunk]'s lifecycle. Each child [Coral] starts
+  /// in the `empty` state until its stream emits its first event.
   ///
   /// * [cancelOnError]: If `true`, the underlying subscription is cancelled immediately if an error occurs.
   /// * [distinct]: If `true`, identical consecutive events are ignored.
-  /// * [equals]: A custom equality function to compare the previous and next events when [distinct] is true.
+  /// * [equals]: A custom equality function to compare the previous and next events when [distinct] is `true`.
+  ///
+  /// **Requires:**
+  /// * If [equals] is provided, [distinct] must be `true`.
   ///
   /// **Ensures:**
   /// * Returns a [Trunk] containing [Coral] nodes created from each [Stream] in this collection.
+  ///
+  /// ## Examples
+  /// ```dart
+  /// final streams = [Stream.value('a'), Stream.value('b')];
+  /// final trunk = streams.toTrunk();
+  /// final joinedCoral = trunk.combine((items) => items.join(','));
+  /// ```
   Trunk<T> toTrunk({
     bool? cancelOnError,
     bool distinct = true,

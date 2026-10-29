@@ -4,26 +4,31 @@
 
 part of '../coralline.dart';
 
+/// Provides the [elements] proxy namespace on `Coral<Iterable<E>>`.
 extension IterableCoralElementsExtension<E> on Coral<Iterable<E>> {
   /// Opens a dedicated namespace for operating on the individual elements of this [Iterable] reactively.
   CoralIterableElements<E> get elements => CoralIterableElements<E>._(this);
 }
 
+/// Provides the [keyed] proxy namespace on `Coral<Iterable<E>>`.
 extension KeyedIterableCoralElementsExtension<E> on Coral<Iterable<E>> {
   /// Opens a dedicated namespace for operating on keyed elements of this [Iterable] reactively.
   CoralKeyedIterableElements<E> get keyed => CoralKeyedIterableElements<E>._(this);
 }
 
+/// Provides the [elements] proxy namespace on `Coral<List<E>>`.
 extension ListCoralElementsExtension<E> on Coral<List<E>> {
   /// Opens a dedicated namespace for operating on the individual elements of this [List] reactively.
   CoralListElements<E> get elements => CoralListElements<E>._(this);
 }
 
+/// Provides the [elements] proxy namespace on `Coral<Set<E>>`.
 extension SetCoralElementsExtension<E> on Coral<Set<E>> {
   /// Opens a dedicated namespace for operating on the individual elements of this [Set] reactively.
   CoralSetElements<E> get elements => CoralSetElements<E>._(this);
 }
 
+/// Provides the [elements] proxy namespace on `Coral<Map<K, V>>`.
 extension MapCoralElementsExtension<K, V> on Coral<Map<K, V>> {
   /// Opens a dedicated namespace for operating on the individual elements of this [Map] reactively.
   CoralMapElements<K, V> get elements => CoralMapElements<K, V>._(this);
@@ -38,11 +43,15 @@ extension type CoralIterableElements<E>._(Coral<Iterable<E>> _coral) {
   /// Exposes the underlying [Coral] node of this elements proxy.
   Coral<Iterable<E>> get coral => _coral;
 
-  /// Maps each element of this collection to another object [T].
+  /// Maps each element of this collection to another object [T] using [convert].
+  ///
+  /// * [convert]: Transformation function applied to each element.
   Coral<List<T>> map<T>(T Function(E element) convert) =>
       _coral.map((source) => List.unmodifiable(source.map(convert)));
 
   /// Filters elements of this collection based on [test].
+  ///
+  /// * [test]: Predicate function that returns `true` for elements to retain.
   Coral<List<E>> where(bool Function(E element) test) => _coral.map((source) => List.unmodifiable(source.where(test)));
 
   /// Returns a list of elements that have type [T] reactively.
@@ -51,34 +60,53 @@ extension type CoralIterableElements<E>._(Coral<Iterable<E>> _coral) {
   /// Returns a list of (index, element) pairs reactively.
   Coral<List<(int, E)>> get indexed => _coral.map((source) => List.unmodifiable(source.indexed));
 
-  /// Flattens this collection by mapping each element to an [Iterable] and concatenating.
+  /// Flattens this collection by mapping each element to an [Iterable] with [toElements] and concatenating.
+  ///
+  /// * [toElements]: Function mapping each element to an [Iterable] of expanded elements.
   Coral<List<T>> expand<T>(Iterable<T> Function(E element) toElements) =>
       _coral.map((source) => List.unmodifiable(source.expand(toElements)));
 
   /// Checks whether the collection contains an element equal to [element] reactively.
+  ///
+  /// * [element]: Candidate object to search for in the collection.
   Coral<bool> contains(Object? element) => _coral.map((source) => source.contains(element));
 
-  /// Reduces a collection to a single value by iteratively combining elements reactively.
+  /// Reduces a collection to a single value by iteratively combining elements with [combine] reactively.
+  ///
+  /// * [combine]: Function combining the running value and each element.
   Coral<E> reduce(E Function(E value, E element) combine) => _coral.map((source) => source.reduce(combine));
 
-  /// Reduces a collection to a single value by iteratively combining elements with an initial value reactively.
+  /// Reduces a collection to a single value by iteratively combining elements with [initialValue] and [combine] reactively.
+  ///
+  /// * [initialValue]: Starting accumulator value.
+  /// * [combine]: Function combining the accumulator and each element.
   Coral<T> fold<T>(T initialValue, T Function(T previousValue, E element) combine) =>
       _coral.map((source) => source.fold(initialValue, combine));
 
   /// Checks if all elements satisfy [test].
+  ///
+  /// * [test]: Predicate function tested against every element.
   Coral<bool> every(bool Function(E element) test) => _coral.map((source) => source.every(test));
 
-  /// Converts each element to a [String] and concatenates the results reactively.
+  /// Converts each element to a [String] and concatenates the results separated by [separator] reactively.
+  ///
+  /// * [separator]: Delimiter inserted between adjacent elements (defaults to `''`).
   Coral<String> join([String separator = '']) => _coral.map((source) => source.join(separator));
 
   /// Checks if any element satisfies [test].
+  ///
+  /// * [test]: Predicate function tested against elements.
   Coral<bool> any(bool Function(E element) test) => _coral.map((source) => source.any(test));
 
   /// Returns a list containing the elements of this iterable reactively.
+  ///
+  /// * [growable]: If `true`, returns a growable list copy; otherwise returns an unmodifiable list.
   Coral<List<E>> toList({bool growable = false}) =>
       _coral.map((source) => growable ? List.of(source, growable: true) : List.unmodifiable(source));
 
   /// Returns a set containing the elements of this iterable reactively.
+  ///
+  /// * [unmodifiable]: If `true` (default), returns an unmodifiable set; otherwise returns a mutable set copy.
   Coral<Set<E>> toSet({bool unmodifiable = true}) =>
       _coral.map((source) => unmodifiable ? Set.unmodifiable(source.toSet()) : source.toSet());
 
@@ -92,46 +120,60 @@ extension type CoralIterableElements<E>._(Coral<Iterable<E>> _coral) {
   Coral<bool> get isNotEmpty => _coral.map((source) => source.isNotEmpty);
 
   /// Takes the first [count] elements of this collection.
+  ///
+  /// * [count]: Maximum number of leading elements to include.
   Coral<List<E>> take(int count) => _coral.map((source) => List.unmodifiable(source.take(count)));
 
   /// Skips the first [count] elements of this collection.
+  ///
+  /// * [count]: Number of leading elements to bypass.
   Coral<List<E>> skip(int count) => _coral.map((source) => List.unmodifiable(source.skip(count)));
 
   /// Returns the first element of this collection reactively.
   Coral<E> get first => _coral.map((source) => source.first);
 
-  /// Returns the first element of this collection reactively, or null if empty.
+  /// Returns the first element of this collection reactively, or `null` if empty.
   Coral<E?> get firstOrNull => _coral.map((source) => source.firstOrNull);
 
   /// Returns the last element of this collection reactively.
   Coral<E> get last => _coral.map((source) => source.last);
 
-  /// Returns the last element of this collection reactively, or null if empty.
+  /// Returns the last element of this collection reactively, or `null` if empty.
   Coral<E?> get lastOrNull => _coral.map((source) => source.lastOrNull);
 
   /// Checks that this collection has only one element, and returns that element reactively.
   Coral<E> get single => _coral.map((source) => source.single);
 
-  /// Checks that this collection has only one element, and returns that element reactively, or null if empty/multiple.
+  /// Checks that this collection has only one element, and returns that element reactively, or `null` if empty or multiple.
   Coral<E?> get singleOrNull => _coral.map((source) => source.singleOrNull);
 
   /// Returns the first element that satisfies the given predicate [test] reactively.
+  ///
+  /// * [test]: Predicate function to match.
+  /// * [orElse]: Fallback generator invoked when no element satisfies [test].
   Coral<E> firstWhere(bool Function(E element) test, {E Function()? orElse}) =>
       _coral.map((source) => source.firstWhere(test, orElse: orElse));
 
   /// Returns the last element that satisfies the given predicate [test] reactively.
+  ///
+  /// * [test]: Predicate function to match.
+  /// * [orElse]: Fallback generator invoked when no element satisfies [test].
   Coral<E> lastWhere(bool Function(E element) test, {E Function()? orElse}) =>
       _coral.map((source) => source.lastWhere(test, orElse: orElse));
 
   /// Returns the single element that satisfies [test] reactively.
+  ///
+  /// * [test]: Predicate function to match.
+  /// * [orElse]: Fallback generator invoked when no element satisfies [test].
   Coral<E> singleWhere(bool Function(E element) test, {E Function()? orElse}) =>
       _coral.map((source) => source.singleWhere(test, orElse: orElse));
 
   /// Returns the [index]th element reactively.
+  ///
+  /// * [index]: Zero-based element position.
   Coral<E> elementAt(int index) => _coral.map((source) => source.elementAt(index));
 }
 
-/// **Core Concept (Keyed Collection Element Proxy):**
 /// A dedicated proxy wrapper for [Coral<Iterable<E>>] to perform keyed element-wise
 /// transformations and divergence operations safely and lazily.
 extension type CoralKeyedIterableElements<E>._(Coral<Iterable<E>> _coral) {
@@ -160,16 +202,25 @@ extension type CoralKeyedIterableElements<E>._(Coral<Iterable<E>> _coral) {
   /// * Returns a `Coral<List<T>>` containing the newly mapped or cached objects.
   /// * If a source element's key matches a cached object, the cached object is reused
   ///   instead of calling [convert] again.
+  ///
+  /// ## Examples
+  /// ```dart
+  /// final itemsCoral = Coral.data([(id: 1, label: 'One'), (id: 2, label: 'Two')]);
+  /// final mappedCoral = itemsCoral.keyed.map(
+  ///   key: (item) => item.id,
+  ///   convert: (item) => 'Item#${item.id}:${item.label}',
+  /// );
+  /// ```
   Coral<List<T>> map<K, T>({
     required K Function(E data) key,
     required T Function(E data) convert,
   }) =>
       _KeyedMapCoral<E, K, T>(_coral, key: key, convert: convert);
 
-  /// Transforms an `Iterable` into a `Trunk` while safely managing node lifecycle and caching by unique keys.
+  /// Transforms an `Iterable` into a [Trunk] while safely managing node lifecycle and caching by unique keys.
   ///
-  /// Unlike standard [diverge], this extension prevents memory leaks and state loss
-  /// by internally tracking and garbage collecting [Coral] nodes based on the `key` extractor.
+  /// Unlike standard [CoralComputationExtension.diverge], this extension prevents memory leaks and state loss
+  /// by internally tracking and garbage collecting [Coral] nodes based on the [key] extractor.
   ///
   /// **Design Philosophy:**
   /// When diverging an iterable into dynamic coral nodes, recreating nodes on every update
@@ -179,26 +230,27 @@ extension type CoralKeyedIterableElements<E>._(Coral<Iterable<E>> _coral) {
   ///
   /// * [key]: A function that extracts a unique, stable identifier from each element in the source iterable.
   /// * [builder]: A function that constructs a new [Coral] node from a source element.
-  /// * [seal]: If `true`, the resulting `Trunk` is sealed and cannot be externally modified. Defaults to `true`.
-  /// * [hotswap]: If `true`, the trunk allows hotswapping components. Defaults to `false`.
-  /// * [eager]: If `true`, nodes are computed eagerly upon creation. Defaults to `false`.
+  /// * [seal]: If `true`, the resulting [Trunk] permanently owns its child nodes. Defaults to `true`.
+  /// * [hotswap]: If `true`, defers deactivation of evicted child nodes to the end of the microtask. Defaults to `false`.
+  /// * [eager]: If `true`, evaluates [builder] and attaches child nodes eagerly during dirty propagation. Defaults to `false`.
   ///
   /// **Requires:**
   /// * The [key] function must return a stable, unique identifier for each logically distinct element.
   ///
   /// **Ensures:**
-  /// * Returns a `Trunk<T>` containing the diverged `Coral` nodes.
+  /// * Returns a `Trunk<T>` containing the diverged [Coral] nodes.
   /// * Child nodes mapped to an existing key are preserved and reused across updates.
+  /// * If [builder] throws for an individual element, that element's line is captured as a [Coral.damaged] node without failing the entire trunk.
   /// * When a key is no longer present in the updated iterable, the framework automatically
   ///   releases its associated [Coral] node.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
-  /// final usersCoral = Coral.data([User(id: '1', name: 'Alice')]);
+  /// final usersCoral = Coral.data([(id: '1', name: 'Alice')]);
   ///
   /// final userTrunk = usersCoral.keyed.diverge(
   ///   key: (user) => user.id, // Stable unique identifier
-  ///   builder: (user) => UserProfileCoral(user.id), // Dynamically maps to a child Coral
+  ///   builder: (user) => Coral.data('Profile:${user.name}'), // Dynamically maps to a child Coral
   /// );
   /// ```
   Trunk<T> diverge<K, T>({
@@ -254,27 +306,44 @@ extension type CoralKeyedIterableElements<E>._(Coral<Iterable<E>> _coral) {
 
 /// A proxy wrapper for [Coral<List<E>>] to perform list-specific transformations and lookup computations.
 extension type CoralListElements<E>._(Coral<List<E>> _coral) implements CoralIterableElements<E> {
-  /// Look up the element at [index] reactively.
+  /// Looks up the element at [index] reactively.
+  ///
+  /// * [index]: Zero-based list index.
   Coral<E> operator [](int index) => _coral.map((list) => list[index]);
 
   /// Returns a reversed view of this list reactively.
   Coral<List<E>> get reversed => _coral.map((list) => List.unmodifiable(list.reversed));
 
-  /// Returns the first index of [element] reactively.
+  /// Returns the first index of [element] starting at [start] reactively.
+  ///
+  /// * [element]: Element to search for.
+  /// * [start]: Starting index for the forward search (defaults to `0`).
   Coral<int> indexOf(E element, [int start = 0]) => _coral.map((list) => list.indexOf(element, start));
 
-  /// Returns the first index in the list that satisfies [test] reactively.
+  /// Returns the first index in the list that satisfies [test] starting at [start] reactively.
+  ///
+  /// * [test]: Predicate function to match.
+  /// * [start]: Starting index for the forward search (defaults to `0`).
   Coral<int> indexWhere(bool Function(E element) test, [int start = 0]) =>
       _coral.map((list) => list.indexWhere(test, start));
 
-  /// Returns the last index in the list that satisfies [test] reactively.
+  /// Returns the last index in the list that satisfies [test] starting at [start] reactively.
+  ///
+  /// * [test]: Predicate function to match.
+  /// * [start]: Optional starting index for the backward search.
   Coral<int> lastIndexWhere(bool Function(E element) test, [int? start]) =>
       _coral.map((list) => list.lastIndexWhere(test, start));
 
-  /// Returns the last index of [element] reactively.
+  /// Returns the last index of [element] starting at [start] reactively.
+  ///
+  /// * [element]: Element to search for.
+  /// * [start]: Optional starting index for the backward search.
   Coral<int> lastIndexOf(E element, [int? start]) => _coral.map((list) => list.lastIndexOf(element, start));
 
-  /// Returns a sublist of this list reactively.
+  /// Returns a sublist of this list from [start] to [end] reactively.
+  ///
+  /// * [start]: Inclusive start index.
+  /// * [end]: Optional exclusive end index.
   Coral<List<E>> sublist(int start, [int? end]) => _coral.map((list) => List.unmodifiable(list.sublist(start, end)));
 
   /// Returns an unmodifiable [Map] view of this list reactively.
@@ -290,15 +359,23 @@ extension type CoralListElements<E>._(Coral<List<E>> _coral) implements CoralIte
 /// A proxy wrapper for [Coral<Set<E>>] to perform set-specific transformations and operations.
 extension type CoralSetElements<E>._(Coral<Set<E>> _coral) implements CoralIterableElements<E> {
   /// Looks up [object] in the set reactively.
+  ///
+  /// * [object]: Object to look up in the set.
   Coral<E?> lookup(Object? object) => _coral.map((set) => set.lookup(object));
 
   /// Computes the intersection of this set and [other] reactively.
+  ///
+  /// * [other]: Set to intersect with this set.
   Coral<Set<E>> intersection(Set<E> other) => _coral.map((set) => Set.unmodifiable(set.intersection(other)));
 
   /// Computes the union of this set and [other] reactively.
+  ///
+  /// * [other]: Set to unite with this set.
   Coral<Set<E>> union(Set<E> other) => _coral.map((set) => Set.unmodifiable(set.union(other)));
 
   /// Computes the difference between this set and [other] reactively.
+  ///
+  /// * [other]: Set whose elements are subtracted from this set.
   Coral<Set<E>> difference(Set<E> other) => _coral.map((set) => Set.unmodifiable(set.difference(other)));
 
   /// Adapts this set to be a `Coral<Set<T>>` reactively.
@@ -313,20 +390,30 @@ extension type CoralMapElements<K, V>._(Coral<Map<K, V>> _coral) {
   /// Exposes the underlying [Coral] node of this elements proxy.
   Coral<Map<K, V>> get coral => _coral;
 
-  /// Look up the value associated with [key] reactively.
+  /// Looks up the value associated with [key] reactively.
+  ///
+  /// * [key]: Key to look up in the map.
   Coral<V?> operator [](K key) => _coral.map((map) => map[key]);
 
   /// Checks whether this map contains the given [key] reactively.
+  ///
+  /// * [key]: Candidate key to test.
   Coral<bool> containsKey(Object? key) => _coral.map((map) => map.containsKey(key));
 
   /// Checks whether this map contains the given [value] reactively.
+  ///
+  /// * [value]: Candidate value to test.
   Coral<bool> containsValue(Object? value) => _coral.map((map) => map.containsValue(value));
 
-  /// Maps the entries of this map reactively to a new map.
+  /// Maps the entries of this map reactively to a new map using [convert].
+  ///
+  /// * [convert]: Function transforming each key-value pair into a new [MapEntry].
   Coral<Map<K2, V2>> map<K2, V2>(MapEntry<K2, V2> Function(K key, V value) convert) =>
       _coral.map((source) => Map.unmodifiable(source.map(convert)));
 
   /// Filters the entries of this map based on [test] reactively.
+  ///
+  /// * [test]: Predicate function that returns `true` for entries to retain.
   Coral<Map<K, V>> where(bool Function(K key, V value) test) {
     return _coral.map((source) {
       final filtered = Map<K, V>.from(source)..removeWhere((k, v) => !test(k, v));

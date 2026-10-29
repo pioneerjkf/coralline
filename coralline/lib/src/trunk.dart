@@ -22,6 +22,8 @@ part of '../coralline.dart';
 sealed class TrunkSnapshot<T> extends CorallineSnapshot {
   /// Creates a valid [TrunkSnapshot] holding the specified [lines].
   ///
+  /// * [lines]: The collection of [Coral] lines to materialize into an unmodifiable list.
+  ///
   /// **Design Philosophy (Constructor-Level Defensive Immutability):**
   /// The underlying implementation (`_TrunkSnapshot`) automatically materializes and freezes
   /// the incoming [lines] using `List.unmodifiable` during initialization.
@@ -33,8 +35,13 @@ sealed class TrunkSnapshot<T> extends CorallineSnapshot {
   /// immutability and defensive copying safely.
   factory TrunkSnapshot(Iterable<Coral<T>> lines) = _TrunkSnapshot;
 
+  /// Creates a damaged [TrunkSnapshot] encapsulating [error] and optional [stackTrace].
+  ///
+  /// * [error]: The structural error or exception cause for this damaged state.
+  /// * [stackTrace]: Optional stack trace associated with [error].
   const factory TrunkSnapshot.damaged(Object error, [StackTrace? stackTrace]) = _DamagedTrunkSnapshot;
 
+  /// Creates an uninitialized (`empty`) [TrunkSnapshot].
   const factory TrunkSnapshot.empty() = _EmptyTrunkSnapshot;
 
   /// Extracts the underlying list of multiple [Coral] lines managed by this trunk.
@@ -48,15 +55,16 @@ sealed class TrunkSnapshot<T> extends CorallineSnapshot {
   /// topological configurations. If you cannot guarantee the trunk is valid, use
   /// [linesOrNull] or [linesOrEmpty] instead.
   ///
-  /// **Preconditions:**
-  /// * The trunk must be in a [isValid] state.
+  /// **Requires:**
+  /// * The trunk snapshot must be in an [isValid] state.
   ///
   /// **Throws:**
-  /// * [CoralSnapshotExtractionException] if [isValid] is false (i.e., [isEmpty] or
-  ///   [isDamaged] is true).
+  /// * [CoralSnapshotExtractionException] if [isValid] is `false` (i.e., [isEmpty] or
+  ///   [isDamaged] is `true`).
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
+  /// final snapshot = TrunkSnapshot<int>([Coral.data(1), Coral.data(2)]);
   /// if (snapshot.isValid) {
   ///   final activeLines = snapshot.lines;
   ///   print('Trunk has ${activeLines.length} active lines.');
@@ -73,11 +81,12 @@ sealed class TrunkSnapshot<T> extends CorallineSnapshot {
   /// downstream logic.
   ///
   /// **Ensures:**
-  /// * Returns `null` if [isValid] is false.
+  /// * Returns `null` if [isValid] is `false`.
   /// * Otherwise, returns the non-null list of [Coral] lines.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
+  /// final snapshot = TrunkSnapshot<int>.empty();
   /// final lines = snapshot.linesOrNull;
   /// if (lines != null) {
   ///   print('Processing ${lines.length} lines.');
@@ -96,10 +105,11 @@ sealed class TrunkSnapshot<T> extends CorallineSnapshot {
   ///
   /// **Ensures:**
   /// * Returns a valid, read-only [List] of [Coral]s under all circumstances.
-  /// * Returns an empty list if [isValid] is false.
+  /// * Returns an empty list if [isValid] is `false`.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
+  /// final snapshot = TrunkSnapshot<String>.empty();
   /// // Safe to map over lines even if the trunk is empty or damaged
   /// final titles = snapshot.linesOrEmpty.map((line) => line.dataOrNull).toList();
   /// ```
@@ -150,7 +160,7 @@ sealed class TrunkSnapshot<T> extends CorallineSnapshot {
 
   /// Extracts the underlying exception or structural failure object from a damaged trunk snapshot.
   ///
-  /// **Preconditions:**
+  /// **Requires:**
   /// * Must only be called when [isDamaged] is `true`.
   ///
   /// **Throws:**
@@ -160,7 +170,7 @@ sealed class TrunkSnapshot<T> extends CorallineSnapshot {
 
   /// Extracts the call stack trace at the point of failure from a damaged trunk snapshot.
   ///
-  /// **Preconditions:**
+  /// **Requires:**
   /// * Must only be called when [isDamaged] is `true`.
   ///
   /// **Throws:**
@@ -169,13 +179,12 @@ sealed class TrunkSnapshot<T> extends CorallineSnapshot {
   StackTrace get stackTrace;
 }
 
-/// **Core Concept (Snapshot Delegation):**
 /// A mixin that forwards all [TrunkSnapshot] properties and accessors directly
 /// to the implementing class.
 ///
 /// **Design Philosophy (Ergonomics):**
-/// By mixing this into [Trunk] (and related nodes like `TrunkTerminal`), developers
-/// can access `isEmpty`, `isValid`, and `lines` directly on the node instance
+/// By mixing this into [Trunk] (and related nodes like [TrunkTerminal]), developers
+/// can access [isEmpty], [isValid], and [lines] directly on the node instance
 /// without having to explicitly unwrap `.snapshot` first (e.g., `trunk.lines`
 /// instead of `trunk.snapshot.lines`). This dramatically reduces boilerplate
 /// in high-frequency UI computation code.
@@ -195,14 +204,20 @@ mixin TrunkSnapshotDelegator<T> implements CorallineSnapshotDelegator<TrunkSnaps
   @pragma('vm:prefer-inline')
   bool get isValid => snapshot.isValid;
 
+  /// Extracts the underlying list of [Coral] lines from [snapshot].
+  ///
   /// See [TrunkSnapshot.lines] for details.
   @pragma('vm:prefer-inline')
   List<Coral<T>> get lines => snapshot.lines;
 
+  /// Safely extracts the list of [Coral] lines from [snapshot], or returns `null` if invalid.
+  ///
   /// See [TrunkSnapshot.linesOrNull] for details.
   @pragma('vm:prefer-inline')
   List<Coral<T>>? get linesOrNull => snapshot.linesOrNull;
 
+  /// Safely extracts the list of [Coral] lines from [snapshot], or returns an empty unmodifiable list if invalid.
+  ///
   /// See [TrunkSnapshot.linesOrEmpty] for details.
   @pragma('vm:prefer-inline')
   List<Coral<T>> get linesOrEmpty => snapshot.linesOrEmpty;
@@ -234,32 +249,41 @@ mixin TrunkSnapshotDelegator<T> implements CorallineSnapshotDelegator<TrunkSnaps
 ///
 /// **Warning (Anti-Pattern Prevention):**
 ///
-/// * **BAD (Repeatedly calling `.toTrunk()` in high-frequency loops/builds):**
+/// * **BAD (Repeatedly calling `.toTrunk()` in high-frequency loops/reads):**
 ///   ```dart
-///   // Anti-pattern: Re-bundling corals in every build cycle reallocates topology nodes
-///   Widget build(BuildContext context) {
-///     final trunk = [coralA, coralB].toTrunk(); // Re-creates and leaks pipeline on every build
-///     return Text('${trunk.combine().data}');
+///   final coralA = Coral.data(1);
+///   final coralB = Coral.data(2);
+///   // Anti-pattern: Re-bundling corals on every read reallocates topology nodes
+///   String renderCombined() {
+///     final trunk = [coralA, coralB].toTrunk(); // Re-creates pipeline on every call
+///     return '${trunk.combine().data}';
 ///   }
 ///   ```
 /// * **GOOD (Declare trunk pipeline once):**
 ///   ```dart
-///   // Recommended: Bundle lines once during component initialization
+///   final coralA = Coral.data(1);
+///   final coralB = Coral.data(2);
+///   // Recommended: Bundle lines once during initialization
 ///   late final Trunk<int> trunk = [coralA, coralB].toTrunk();
 ///   ```
 ///
-/// **Intended Usage (Static & Resource Factories):**
-/// Use the default constructor to bundle valid lines. Use the `damaged` or
-/// `empty` factories to represent terminal failure or uninitialized states
-/// for the entire bundle, bypassing the need for nullability.
+/// **Intended Usage (Static Factories):**
+/// Use [Trunk.of] to bundle a collection of [Coral] lines. Use [Trunk.damaged] to
+/// represent a structural failure of the bundle, or [Trunk.empty] to create an
+/// instant trunk containing an empty list of lines (`const []`, with `isValid == true`;
+/// note that an uninitialized trunk snapshot is represented by [TrunkSnapshot.empty]).
 sealed class Trunk<T> extends CoralNode with TrunkSnapshotDelegator<T> {
   /// Creates a [Trunk] pipeline bundling the given collection of [lines].
   ///
+  /// * [lines]: The collection of [Coral] nodes to bundle into this trunk.
   /// * [seal]: If `true` (default), bundled lines are permanently owned by this trunk
   ///   and cannot be detached or claimed by external downstream parents without explicit release.
   /// * [hotswap]: If `true` (only applicable when [seal] is `false`), enables mooring point
   ///   safeguards for bundled lines when they are swapped or claimed by downstream parent nodes
   ///   while active.
+  ///
+  /// **Requires:**
+  /// * If [seal] is `true`, [hotswap] must be `false`.
   ///
   /// **Note on [hotswap]:**
   /// While [Trunk.of] itself is a read-only bundle and does not expose dynamic write operations,
@@ -279,8 +303,13 @@ sealed class Trunk<T> extends CoralNode with TrunkSnapshotDelegator<T> {
             : _DetachableColdswapTrunk<T>(lines);
   }
 
+  /// Creates a static, instant [Trunk] in a `damaged` state storing [error] and optional [stackTrace].
+  ///
+  /// * [error]: The structural error or exception payload causing the damaged state.
+  /// * [stackTrace]: Optional stack trace associated with [error].
   factory Trunk.damaged(Object error, [StackTrace? stackTrace]) = _InstantTrunk.damaged;
 
+  /// Creates a static, instant [Trunk] holding an empty list of lines (`const []`, with `isValid == true`).
   factory Trunk.empty() = _InstantTrunk.empty;
 
   /// Whether this pipeline node has been activated by at least one downstream branch.
@@ -295,7 +324,7 @@ sealed class Trunk<T> extends CoralNode with TrunkSnapshotDelegator<T> {
   @override
   bool get isPaused;
 
-  /// Whether this pipeline node has been permanently deactivated.
+  /// Whether this pipeline node is currently in the deactivated (inactive) state.
   @override
   bool get isDeactivated;
 
@@ -315,27 +344,38 @@ sealed class Trunk<T> extends CoralNode with TrunkSnapshotDelegator<T> {
   @override
   bool get isValid;
 
+  /// Extracts the underlying list of [Coral] lines from this trunk's [snapshot].
+  ///
   /// See [TrunkSnapshot.lines] for details.
   @override
   List<Coral<T>> get lines;
 
+  /// Safely extracts the list of [Coral] lines from this trunk's [snapshot], or returns `null` if invalid.
+  ///
   /// See [TrunkSnapshot.linesOrNull] for details.
   @override
   List<Coral<T>>? get linesOrNull;
 
+  /// Safely extracts the list of [Coral] lines from this trunk's [snapshot], or returns an empty unmodifiable list if invalid.
+  ///
   /// See [TrunkSnapshot.linesOrEmpty] for details.
   @override
   List<Coral<T>> get linesOrEmpty;
 
+  /// Extracts the structural error object from this trunk's [snapshot] when [isDamaged] is `true`.
+  ///
   /// See [TrunkSnapshot.error] for details.
   @override
   Object get error;
 
+  /// Extracts the stack trace from this trunk's [snapshot] when [isDamaged] is `true`.
+  ///
   /// See [TrunkSnapshot.stackTrace] for details.
   @override
   StackTrace get stackTrace;
 }
 
+/// A read-only provider interface that exposes a reactive [Trunk] bundle and its [CorallineLifecycleStatus].
 abstract interface class TrunkProvider<T> implements CorallineLifecycleStatus {
   /// The underlying [Trunk] instance managed by this provider.
   Trunk<T> get trunk;
@@ -352,7 +392,7 @@ abstract interface class TrunkProvider<T> implements CorallineLifecycleStatus {
   @override
   bool get isPaused;
 
-  /// Whether the underlying [trunk] pipeline node has been permanently deactivated.
+  /// Whether the underlying [trunk] pipeline node is currently in the deactivated (inactive) state.
   @override
   bool get isDeactivated;
 }
@@ -360,15 +400,20 @@ abstract interface class TrunkProvider<T> implements CorallineLifecycleStatus {
 /// Convenience conversion methods for [Trunk] pipelines.
 extension TrunkExtension<T> on Trunk<T> {
   /// Connects this [Trunk] bundle to a [TrunkTerminal] with the given [onDirty] callback.
+  ///
+  /// * [onDirty]: Callback invoked when this trunk marks the terminal dirty.
   TrunkTerminal<T> toTerminal(void Function() onDirty) => TrunkTerminal<T>(this, onDirty: onDirty);
 }
 
 /// Convenience conversion extensions available directly on any [TrunkProvider].
 extension TrunkProviderExtension<T> on TrunkProvider<T> {
   /// Connects this provider's underlying [trunk] to a [TrunkTerminal] with the given [onDirty] callback.
+  ///
+  /// * [onDirty]: Callback invoked when the underlying [trunk] marks the terminal dirty.
   TrunkTerminal<T> toTerminal(void Function() onDirty) => trunk.toTerminal(onDirty);
 }
 
+/// Declarative aggregation, combination, and convergence operators for [Trunk] bundles.
 extension TrunkComputationExtension<S> on Trunk<S> {
   /// Computes the contents of the trunk and reduces multiple inbound [Coral] lines into a single scalar value.
   ///
@@ -377,11 +422,14 @@ extension TrunkComputationExtension<S> on Trunk<S> {
   /// a standard [Coral] (1:1) node. It exposes the entire collection of inbound
   /// lines so they can be synchronously folded or transformed.
   ///
+  /// * [aggregator]: Pure synchronous function folding the inbound [Coral] lines into a single `T` value.
+  ///
   /// **Requires:**
   /// * The [aggregator] callback MUST be a pure, synchronous function with no side effects.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
+  /// final trunk = Trunk.of([Coral.data(10), Coral.data(20)]);
   /// final sumCoral = trunk.aggregate((lines) => lines.fold(0, (sum, line) => sum + line.data));
   /// ```
   Coral<T> aggregate<T>(T Function(Iterable<Coral<S>> lines) aggregator) =>
@@ -406,50 +454,34 @@ extension TrunkComputationExtension<S> on Trunk<S> {
   /// where the architecture of the downstream graph itself depends on the state
   /// of the upstream trunk (e.g., swapping a repository node based on an auth trunk).
   ///
-  /// **Intended Usage:**
-  /// Use this when you need to dynamically construct and attach a downstream
-  /// node based on the current state of multiple upstream lines.
+  /// * [cascade]: Builder callback receiving the inbound [Coral] lines and returning the converged [Coral] node.
+  /// * [seal]: If `true`, the converged node is strictly bound to this parent and cannot be stolen. Defaults to `true`.
+  /// * [hotswap]: If `true`, defers deactivation of the previous converged node to the end of the microtask. Defaults to `false`.
+  /// * [eager]: If `true`, evaluates [cascade] and attaches the converged node eagerly during dirty propagation. Defaults to `false`.
   ///
-  /// ## Example: Dynamic Form Validation Routing
+  /// ## Examples
   /// ```dart
   /// // 1. Define independent validation pipelines (Corals) for each login method
-  /// final emailValidationCoral = createEmailValidationPipeline();
-  /// final phoneValidationCoral = createPhoneValidationPipeline();
+  /// final emailValidationCoral = Coral.data(true);
+  /// final phoneValidationCoral = Coral.data(false);
   ///
-  /// // 2. A pipeline representing the user's currently selected tab (Email vs Phone)
-  /// final loginMethodCoral = Coral.data(LoginMethod.email);
+  /// // 2. A pipeline representing the user's currently selected tab ('email' vs 'phone')
+  /// final loginMethodCoral = Coral.data('email');
   ///
   /// // 3. Wrap the state in a Trunk to compute dynamic topological routing
   /// final authStateTrunk = Trunk.of([loginMethodCoral]);
   ///
-  /// // 4. [Core Logic] Dynamically route to the correct validation pipeline!
-  /// // When the user switches tabs, the downstream graph seamlessly hotswaps.
-  /// // State Preservation Benefit: The inactive pipeline (e.g., Email) is
-  /// // safely decoupled but retains its internal state in memory. If the user
-  /// // switches back, all previously typed inputs and validation states are
-  /// // instantly restored without any UI state-management hacks!
+  /// // 4. Dynamically route to the active validation pipeline
   /// final isSubmitEnabledCoral = authStateTrunk.converge((lines) {
-  ///   final method = lines.first.snapshot.data; // Current login method
+  ///   final method = lines.first.snapshot.data;
+  ///   return method == 'email' ? emailValidationCoral : phoneValidationCoral;
+  /// }, hotswap: true);
   ///
-  ///   // Return the actual pipeline to be connected downstream.
-  ///   // The submit button will now only react to the active form's inputs.
-  ///   return method == LoginMethod.email
-  ///       ? emailValidationCoral
-  ///       : phoneValidationCoral;
-  /// });
-  ///
-  /// // 5. Final UI Terminal: The Submit Button listens to the actively routed pipeline
+  /// // 5. Final Terminal observing the actively routed pipeline
   /// final terminal = isSubmitEnabledCoral.toTerminal(() {
-  ///   submitButton.isEnabled = isSubmitEnabledCoral.data;
+  ///   print('Submit enabled: ${isSubmitEnabledCoral.data}');
   /// });
   /// ```
-  ///
-  /// **Implementation note (Topological Configuration):**
-  /// * [seal]: If `true`, the converged node is strictly bound to this parent and cannot be stolen.
-  /// * [hotswap]: If `true`, swapping the dynamically generated node seamlessly transfers
-  ///   activation states.
-  /// * [eager]: If `true`, the converged node is computed and constructed immediately upon
-  ///   attachment.
   Coral<T> converge<T>(
     Coral<T> Function(Iterable<Coral<S>> lines) cascade, {
     bool seal = true,
@@ -473,12 +505,19 @@ extension TrunkComputationExtension<S> on Trunk<S> {
 /// Automatically delegates operations to the underlying [Trunk] node.
 extension TrunkProviderComputationExtension<S> on TrunkProvider<S> {
   /// Delegates [TrunkComputationExtension.aggregate] to the underlying [Trunk].
+  ///
+  /// * [aggregate]: Pure synchronous function folding the inbound [Coral] lines into a single `T` value.
   Coral<T> aggregate<T>(T Function(Iterable<Coral<S>> lines) aggregate) => trunk.aggregate(aggregate);
 
   /// Delegates [TrunkComputationExtension.combine] to the underlying [Trunk].
   Coral<List<S>> combine() => trunk.combine();
 
   /// Delegates [TrunkComputationExtension.converge] to the underlying [Trunk].
+  ///
+  /// * [cascade]: Builder callback receiving the inbound [Coral] lines and returning the converged [Coral] node.
+  /// * [seal]: If `true`, the converged node is strictly bound to this parent.
+  /// * [hotswap]: If `true`, defers deactivation of the previous converged node to the end of the microtask.
+  /// * [eager]: If `true`, evaluates [cascade] eagerly during dirty propagation.
   Coral<T> converge<T>(
     Coral<T> Function(Iterable<Coral<S>> lines) cascade, {
     bool seal = true,

@@ -66,8 +66,8 @@ graph TD
 
     State -->|"Push Dirty Signal"| Computation
     InheritedProvider -->|"O(1) Element Tree Lookup"| ContextAware
-        Computation -->|"Reactive pipeline"| ContextAware
-    ContextAware -->|"Lazy Pull Data on Frame"| TerminalWidget
+    ContextAware -->|"Reactive context stream"| Computation
+    Computation -->|"Lazy Pull Data on Frame"| TerminalWidget
 ```
 
 *(Reactive notifications connect Coralline nodes to Flutter elements.)*
@@ -84,14 +84,14 @@ sequenceDiagram
     participant Element as CoralWidgetElement
     participant Engine as Flutter Engine (Frame)
     State->>Pipeline: 1. State Mutated
-    Pipeline-->>Element: 2. Change notification
-    Note over Element: Schedules work through Flutter integration
-    Engine->>Element: 3. Flutter build phase
-    Element->>Pipeline: 4. Lazy Pull Computed Widget Data
-    alt Widget Data Changed
-        Element->>Engine: 5. Return updated widget tree
-    else Widget Data Identical
-        Element-->>Engine: Skip Layout & Paint
+    alt Distinct Value Changed (or Non-Distinct)
+        Pipeline-->>Element: 2. Change notification (markNeedsBuild)
+        Note over Element: Schedules work through Flutter integration
+        Engine->>Element: 3. Flutter build phase
+        Element->>Pipeline: 4. Lazy Pull Computed Widget Data (_terminal.data)
+        Element->>Engine: 5. Return updated Widget tree
+    else Distinct Value Identical
+        Note over Pipeline: Suppresses downstream dirty notification
     end
 ```
 
@@ -185,7 +185,8 @@ base class UserHeaderCard extends BuildComponent {
 Access Flutter's `BuildContext` (Theme, MediaQuery, InheritedWidgets) directly inside reactive computations without breaking purity.
 
 ```dart
-base class ThemedStatusBadge extends BuildComponent with CorallineBuildContextAware {
+base class ThemedStatusBadge extends BuildComponent
+    with CorallineTerminalIntentAware, CorallineBuildContextAware {
   ThemedStatusBadge({required this.statusMessage});
 
   final Coral<String> statusMessage;
@@ -212,7 +213,7 @@ base class ThemedStatusBadge extends BuildComponent with CorallineBuildContextAw
 }
 ```
 
-### Example 4: Dependency Injection via `InheritedCoralProvider` & `coralOf<T>()`
+### Example 4: Dependency Injection via `InheritedCoralProviderWidget` & `coralOf<T>()`
 
 Inject reactive state into the widget tree and read it from any descendant component without prop-drilling.
 
@@ -235,13 +236,14 @@ class AppUser {
 Widget buildApp(CoralProvider<AppUser> userProvider) {
   return InheritedCoralProviderWidget<AppUser>(
     provider: userProvider,
-    child: const UserProfilePage(),
+    child: UserGreeting().toWidget(),
   );
 }
 
 // 3. Consume state anywhere in descendant tree and flatten inner pipelines (Cascade)
-base class UserGreeting extends BuildComponent with CorallineBuildContextAware {
-  // Automatically pull ancestor InheritedCoralProvider state and cascade-flatten its inner pipelines
+base class UserGreeting extends BuildComponent
+    with CorallineTerminalIntentAware, CorallineBuildContextAware {
+  // Automatically pull ancestor InheritedCoralProviderWidget state and cascade-flatten its inner pipelines
   late final userCoral = coralOf<AppUser>();
   late final unreadCountCoral = coralOf<AppUser>().cascade((user) => user.unreadCountCoral);
   late final cartItemCountCoral = coralOf<AppUser>().cascade((user) => user.cartItemCountCoral);
@@ -265,7 +267,7 @@ base class UserGreeting extends BuildComponent with CorallineBuildContextAware {
 Drive high-performance Flutter animations directly within reactive business components without `StatefulWidget` boilerplate or ticker leaks.
 
 ```dart
-base class ExpandablePanel extends ComplexComputation<Widget>
+base class ExpandablePanel extends BuildComponent
     with
         CorallineLifecycleAware,
         CorallineTerminalIntentAware,
@@ -288,6 +290,7 @@ base class ExpandablePanel extends ComplexComputation<Widget>
   // 2. Drive tween animation transform
   late final animation = controller.drive(_expansionTween);
 
+  // 3. Declare animation coral dependency in manifest
   @override
   @manifestSync
   Iterable<CoralNode> manifest() => [controller.coral];
@@ -308,6 +311,12 @@ base class ExpandablePanel extends ComplexComputation<Widget>
 Prevent red error screens or app crashes when reactive pipelines encounter runtime exceptions (e.g. network failure, null reference, damaged state) by supplying a fallback `errorBuilder`.
 
 ```dart
+class UserProfile {
+  const UserProfile(this.name, this.email);
+  final String name;
+  final String email;
+}
+
 base class UserProfileCard extends BuildComponent {
   UserProfileCard({required this.userProfileCoral});
 
@@ -420,7 +429,7 @@ State Update
 
 1. **Flutter Inherited Lookup**: Uses `InheritedWidget` and `dependOnInheritedWidgetOfExactType` to locate a provider and register the dependent element with Flutter.
 2. **Element Lifecycle**: Flutter tracks inherited dependencies for its elements and updates those relationships as the widget tree changes. Applications still need to manage Coralline objects they create directly.
-3. **Seamless Flutter Ecosystem Compatibility**: Effortlessly bridges native Flutter UI context providers (`Theme`, `MediaQuery`, `Localizations`) into pure reactive `Coral<T>` nodes via `CorallineBuildContextAware`.
+3. **Seamless Flutter Ecosystem Compatibility**: Bridges native Flutter UI context providers (`Theme`, `MediaQuery`, `Localizations`) into pure reactive `Coral<T>` nodes via `CorallineBuildContextAware`.
 4. **Intuitive Scoped Dependency Injection**: Preserves familiar widget-tree-scoped DI patterns without requiring complex global container setups.
 
 > **Summary**: `InheritedCoralProviderWidget` uses Flutter's inherited widget mechanism for scoped lookup. Coralline's pipeline then provides its own dependency and value-reading behavior.
@@ -463,7 +472,7 @@ Coralline Flutter represents UI output as a reactive computation node. The table
 | **Data Propagation** | **Push-Dirty, Pull-Data** | Commonly modeled with events and states | Provider invalidation and recomputation patterns vary | Push-Dirty, Pull-Data |
 | **Intent Handling** | **Upstream Intent + Firewall** | Sink Event Dispatch | Notifier Direct Calls | Direct Signal Mutation |
 | **Rebuild Execution** | Flutter schedules builds; components read their dependencies when building | Flutter schedules builds from BLoC state notifications | Flutter schedules builds according to provider changes | Depends on the signal and Flutter integration |
-| **Safety & Control** | **Intent Firewall + `catchDamaged`** | Runtime Try/Catch | `AsyncValue` Catch | Exception Propagation |
+| **Safety & Control** | **Intent Firewall + `fallback` / `errorBuilder`** | Runtime Try/Catch | `AsyncValue` Catch | Exception Propagation |
 | **Dynamic Hotswap** | **Native (`CoralCoupler`)** | Manual Stream Rebind | `ref.watch` Dynamic Rebind | `effect` Re-track |
 
 #### Key Architectural Takeaways

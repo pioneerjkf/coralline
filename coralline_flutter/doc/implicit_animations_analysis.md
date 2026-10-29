@@ -37,7 +37,7 @@ Coral<T> Data Change ──> Topological Reactive Dirty Push ──> ImplicitlyA
    - **Coralline**: Emits targeted signals through `_animationSignal` directly to the specific `CoralWidgetElement`, eliminating unnecessary ancestor/descendant tree diffing.
 
 3. **Lazy Multi-Update Suppression**:
-   - Driven by Coralline's `_LazyCascading` graph mechanism, multiple simultaneous upstream node updates within a single frame are collapsed into a single `compute()` pass, preventing notification floods.
+   - Driven by Coralline's push-dirty coalescing mechanism, multiple simultaneous upstream node updates within a single frame are collapsed into a single `compute()` pass, preventing notification floods.
 
 ---
 
@@ -52,7 +52,7 @@ Coral<T> Data Change ──> Topological Reactive Dirty Push ──> ImplicitlyA
    - **Coralline**: Uses a lightweight `ImplicitTween` wrapper storing only two internal fields (`_previous` and `_target`), minimizing heap memory footprint.
 
 3. **`Coral.resource` Lazy Allocation & Immediate Teardown**:
-   - `AnimationController` instances are lazily allocated only when the Computation mounts (`didActivate`) in the reactive UI tree and are immediately disposed of upon unmounting (`didDeactivate`).
+   - `AnimationController` instances are lazily allocated only when the `Coral.resource` node activates in the reactive UI tree and are immediately disposed of upon deactivation.
 
 ---
 
@@ -67,7 +67,7 @@ Coral<T> Data Change ──> Topological Reactive Dirty Push ──> ImplicitlyA
    - **Coralline**: Consolidates [Input ──> Interpolation ──> Widget Construction] into a single linear path within `compute()`, dramatically enhancing code readability and maintainability.
 
 3. **Direct `Coral<T>` Node Binding**:
-   - Accepting `Coral<T>` nodes directly allows UI elements to trigger smooth implicit animations simply by updating target data (`node.data = value`) without parent widget rebuilds or `setState` calls.
+   - Accepting `Coral<T>` nodes directly allows UI elements to trigger smooth implicit animations simply by updating upstream controller data (`controller.set(value)` or `controller.data = value`) without parent widget rebuilds or `setState` calls.
 
 ---
 

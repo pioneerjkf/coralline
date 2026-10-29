@@ -25,6 +25,7 @@
 /// - **Context Awareness**: [CorallineBuildContextAware], [InheritedCoralProviderWidget] in `widgets.dart`.
 /// - **Lifecycle & Animation**: [ResilientAnimationController], [TickerProviderCorallineLifecycleAwareMixin] in `animation.dart` and `scheduler.dart`.
 /// - **Foundation Adapters**: [ValueListenableCoralExtension] in `foundation.dart`.
+/// - **Optional Entrypoints**: Import `package:coralline_flutter/material.dart`, `package:coralline_flutter/cupertino.dart`, or `package:coralline_flutter/collection.dart` for Material, Cupertino, or collection extension integrations.
 library;
 
 export 'package:coralline/coralline.dart';

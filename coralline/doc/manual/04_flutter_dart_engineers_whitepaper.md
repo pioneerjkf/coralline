@@ -59,8 +59,8 @@ Traditional tree-based reactive engines traverse parent chains recursively durin
 
 ```mermaid
 graph LR
-    A["CoralNode (Leaf)"] -- Direct Clearance Pointer (O(1)) --> B["_ClearancePoint (Scheduler)"]
-    A -. Parent Chain O(d) Bypass .-> C["Intermediate Nodes (Unvisited)"]
+    A["CoralNode (Upstream Source / Joint)"] -- Direct Clearance Pointer (O(1)) --> B["_ClearancePoint (Nearest Downstream Compute / Terminal)"]
+    A -. Parent Chain O(d) Bypass .-> C["Intermediate Pass-Through Nodes (Unvisited)"]
 ```
 
 - `_clearancePoint`: Direct $O(1)$ reference to nearest clearance point.
@@ -137,9 +137,9 @@ graph TD
     SwapContainer -->|Propagates T snapshot| DT[Downstream Terminal]
 ```
 
-To prevent infinite dirty signal cascades during structural graph mutations, `_CascadingCoralline` employs `_suppressedDirtyPushCount`:
-- Increments `_suppressedDirtyPushCount` prior to dynamic line instantiation.
-- Coalesces duplicate intermediate dirty notifications into a single atomic downstream signal.
+To prevent duplicate dirty signal cascades during lazy structural graph mutations, `_LazyCascadingCorallineMixin` (and `_LazyCascadingTrunkMixin`) employs `_suppressedDirtyPushCount`:
+- Emits the initial downstream dirty signal when the upstream source marks `_onSourceDirty()` (`_performRelease()`).
+- Increments `_suppressedDirtyPushCount` during the deferred `_pull()` evaluation prior to `_performCascadeGuarded()`, suppressing redundant secondary dirty notifications while the consumer is actively pulling data.
 
 <br><br>
 
@@ -160,5 +160,5 @@ Coralline represents synchronous values and async results in a pipeline. It does
 ```
 
 - **Off-thread work**: If an application runs CPU-heavy work in an isolate, it can pass the result back to its Coralline source. Isolate creation and messaging are application responsibilities.
-- **Fail-Fast Interception**: At convergence nodes (`Trunk.combine()`, `Trunk.converge()`), if any single inbound source (whether sync, async, or isolate) encounters an exception, processing halts immediately and forwards `CoralSnapshot.damaged(error)` downstream.
+- **Fail-Fast Interception**: In `Trunk.combine()`, extracting `.data` from each line halts immediately on the first `Empty` or `Damaged` line and wraps the resulting `CoralSnapshotExtractionException` into a `CoralSnapshot.damaged` snapshot. In `Trunk.converge()`, the `Iterable<Coral<S>>` lines are passed to the callback, which transitions to `CoralSnapshot.damaged` if the trunk snapshot itself is damaged, if the callback throws (such as by extracting `.data` from an empty or damaged line), or if the returned `Coral` node is damaged.
 

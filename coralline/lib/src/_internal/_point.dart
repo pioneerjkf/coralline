@@ -5,16 +5,13 @@
 part of '../../coralline.dart';
 
 base mixin _DirtyPoint on CoralNode {
-  /// **Core Concept (Coalescing Buffer Flag):**
-  /// Serves as the core defense mechanism against synchronous notification floods.
+  /// Coalescing buffer flag that suppresses duplicate dirty notifications while non-running.
   ///
-  /// **Operational Mechanism:**
   /// When this node is not running (e.g., during setup or paused state), incoming
   /// [_pushDirty] calls are not propagated down the graph. Instead, this flag is
   /// simply set to `true`. Once the node resumes or activates, it checks this flag
   /// and fires a single, coalesced notification if needed.
   ///
-  /// **Performance Characteristics:**
   /// Ensures O(1) flush complexity regardless of how many redundant updates were
   /// received while the node was dormant.
   bool _isDirtyPending = false;
@@ -83,7 +80,6 @@ base mixin _SuppressibleDirtyPoint on _DirtyPoint {
 }
 
 /// Handles cache invalidation and dirty signal propagation (the Clearance phase).
-/// See `doc/manual_en/ch2_reactivity.md` for details on the Clearance mechanics.
 base mixin _ClearancePoint on _Joint {
   @override
   _ClearancePoint? _resolveClearancePoint() => this;
@@ -182,9 +178,7 @@ base mixin _ClearancePoint on _Joint {
 }
 
 /// A safe, temporary anchor node in the topological graph designed to prevent
-/// lifecycle conflicts and memory leaks during [Hotswap] (dynamic node swapping).
-///
-/// For detailed mechanics on Hotswapping and Mooring Points, see `doc/manual_en/ch6_dynamic_topology.md`.
+/// lifecycle conflicts and memory leaks during `hotswap` (dynamic node swapping).
 base class _MooringPoint extends CoralNode with _Joint, _ClearancePoint {
   @override
   @pragma('vm:prefer-inline')

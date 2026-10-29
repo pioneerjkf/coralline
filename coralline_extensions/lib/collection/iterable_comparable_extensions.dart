@@ -4,9 +4,10 @@
 
 import 'package:coralline/coralline.dart';
 
+/// Reactive comparison, min/max, and sorting extensions for [CoralIterableElements] of [Comparable] elements.
 extension ComparableCoralElementsExtension<E extends Comparable<dynamic>>
     on CoralIterableElements<E> {
-  /// Returns the minimum element in this collection, or null if empty.
+  /// Returns the minimum element in this collection, or `null` if empty.
   Coral<E?> get minOrNull => coral.map((source) {
         if (source.isEmpty) return null;
         return source.reduce((a, b) => a.compareTo(b) < 0 ? a : b);
@@ -18,7 +19,7 @@ extension ComparableCoralElementsExtension<E extends Comparable<dynamic>>
         return source.reduce((a, b) => a.compareTo(b) < 0 ? a : b);
       });
 
-  /// Returns the maximum element in this collection, or null if empty.
+  /// Returns the maximum element in this collection, or `null` if empty.
   Coral<E?> get maxOrNull => coral.map((source) {
         if (source.isEmpty) return null;
         return source.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
@@ -30,7 +31,9 @@ extension ComparableCoralElementsExtension<E extends Comparable<dynamic>>
         return source.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
       });
 
-  /// Returns true if this collection is sorted in ascending order.
+  /// Returns `true` if this collection is sorted according to [compare] (or natural ascending order if omitted).
+  ///
+  /// * [compare]: Optional comparator function; defaults to `a.compareTo(b)`.
   Coral<bool> isSorted([int Function(E a, E b)? compare]) =>
       coral.map((source) {
         if (source.length < 2) return true;
@@ -45,12 +48,12 @@ extension ComparableCoralElementsExtension<E extends Comparable<dynamic>>
         return true;
       });
 
-  /// Returns a new list containing the elements of this collection sorted in ascending order.
+  /// Returns a new unmodifiable list containing the elements of this collection sorted in ascending order.
   Coral<List<E>> get sorted => coral.map((source) {
         return List<E>.unmodifiable(source.toList()..sort());
       });
 
-  /// Returns a new list containing the elements of this collection sorted in descending order.
+  /// Returns a new unmodifiable list containing the elements of this collection sorted in descending order.
   Coral<List<E>> get sortedDescending => coral.map((source) {
         return List<E>.unmodifiable(
             source.toList()..sort((a, b) => b.compareTo(a)));

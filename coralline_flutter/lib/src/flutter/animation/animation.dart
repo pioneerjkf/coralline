@@ -15,7 +15,7 @@ part of '../../../animation.dart';
 /// ## State Machine Architecture (2-State Resilient FSM)
 /// ```text
 /// ┌────────────────────────────────────────────────────────┐
-/// │             Dormant State (_DormantDelegate)           │
+/// │    Dormant State (_DormantAnimationControlDelegate)    │
 /// │  - Staged parameters (duration, value, bounds, vsync)  │
 /// │  - No active Ticker allocated                          │
 /// └────────────────────────────────────────────────────────┘
@@ -24,7 +24,7 @@ part of '../../../animation.dart';
 ///            ┌───────────────┴───────────────┐
 ///            ▼                               │
 /// ┌──────────────────────────────────────────┴─────────────┐
-/// │              Active State (_ActiveDelegate)            │
+/// │     Active State (_ActiveAnimationControlDelegate)     │
 /// │  - Real AnimationController engine allocated           │
 /// │  - Synchronized ticker driving frame simulations       │
 /// └────────────────────────────────────────────────────────┘
@@ -41,7 +41,8 @@ part of '../../../animation.dart';
 /// **Warning (Anti-Pattern Prevention):**
 /// - Do NOT invoke motion-driving methods (e.g. [forward], [reverse], [animateTo]) while dormant;
 ///   they require an active [coral] resource topology and will throw [StateError].
-/// - Do NOT manually dispose the underlying engine directly; manage disposal via [dispose].
+/// - Do NOT manually dispose the underlying `AnimationController` engine directly; the [coral]
+///   resource node automatically disposes the active engine when deactivated.
 ///
 /// **BAD:**
 /// ```dart
@@ -54,9 +55,10 @@ part of '../../../animation.dart';
 /// **GOOD:**
 /// ```dart
 /// // [Recommended] Manifest controller.coral in the reactive topology before driving animation
-/// base class AnimatedPanel extends ComplexComputation<Widget>
+/// base class AnimatedPanel extends BuildComponent
 ///     with
 ///         CorallineLifecycleAware,
+///         CorallineTerminalIntentAware,
 ///         CorallineBuildContextAware,
 ///         SingleTickerProviderCorallineLifecycleAwareMixin {
 ///   AnimatedPanel({required this.child});
@@ -69,6 +71,7 @@ part of '../../../animation.dart';
 ///   );
 ///
 ///   @override
+///   @manifestSync
 ///   Iterable<CoralNode> manifest() => [controller.coral];
 ///
 ///   void trigger() {
@@ -83,7 +86,7 @@ part of '../../../animation.dart';
 ///
 /// ## Examples
 /// ```dart
-/// base class ExpandablePanel extends ComplexComputation<Widget>
+/// base class ExpandablePanel extends BuildComponent
 ///     with
 ///         CorallineLifecycleAware,
 ///         CorallineTerminalIntentAware,
@@ -107,6 +110,7 @@ part of '../../../animation.dart';
 ///   late final animation = controller.drive(_expansionTween);
 ///
 ///   @override
+///   @manifestSync
 ///   Iterable<CoralNode> manifest() => [
 ///     // 3. Register controller.coral in the reactive node topology.
 ///     controller.coral,
@@ -308,10 +312,10 @@ base class ResilientAnimationController extends Animation<double>
   @override
   bool get isActivated => _resource.isActivated;
 
-  /// Whether the underlying animation [coral] resource node has been permanently deactivated.
+  /// Whether the underlying animation [coral] resource node is currently in the deactivated (inactive) state.
   ///
   /// **Ensures:**
-  /// * Returns `true` if the [coral] resource node has terminated its lifecycle.
+  /// * Returns `true` if the [coral] resource node is currently inactive.
   @override
   bool get isDeactivated => _resource.isDeactivated;
 
@@ -325,7 +329,7 @@ base class ResilientAnimationController extends Animation<double>
   /// Whether the underlying animation [coral] resource node is currently running.
   ///
   /// **Ensures:**
-  /// * Returns `true` if the active engine ticker is actively ticking.
+  /// * Returns `true` if the [coral] resource node is active and not paused (use [isAnimating] to check if the animation ticker is actively advancing).
   @override
   bool get isRunning => _resource.isRunning;
 
@@ -425,8 +429,9 @@ base class ResilientAnimationController extends Animation<double>
 
   /// The current status of this animation.
   ///
-  /// When dormant, returns [AnimationStatus.completed] if [value] == [upperBound],
-  /// otherwise returns [AnimationStatus.dismissed].
+  /// When dormant, checks [value] == [lowerBound] first (returning [AnimationStatus.dismissed]),
+  /// then returns [AnimationStatus.completed] if [value] == [upperBound], and otherwise returns
+  /// [AnimationStatus.dismissed].
   @override
   AnimationStatus get status => _delegate.status;
 
@@ -688,13 +693,12 @@ base class ResilientAnimationController extends Animation<double>
   /// ```
   void stop({bool canceled = true}) => _delegate.stop(canceled: canceled);
 
-  /// Releases the resources used by this object.
+  /// Releases the listener registrations managed by this animation wrapper.
   ///
   /// **Ensures:**
-  /// * Disposes the active or dormant delegate and notifies parent listeners.
-  ///
-  /// **Implementation note:**
-  /// After calling [dispose], this controller cannot be reused.
+  /// * Invokes `super.dispose()` ([AnimationEagerListenerMixin.dispose]). The underlying
+  ///   [AnimationController] engine is disposed automatically by the [coral] resource node
+  ///   when the node deactivates.
   ///
   /// **Example:**
   /// ```dart

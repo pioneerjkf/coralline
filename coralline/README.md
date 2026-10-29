@@ -4,8 +4,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Dart SDK](https://img.shields.io/badge/Dart-3.6+-0175C2.svg)](https://dart.dev)
 
-> **"Don't write boilerplates. To handle complex reactive pipelines, all you have to do is call a line (Coralline)."**  
-> *Stop tangling your logic wires—a composable pipeline for reactive structures. Simply call a line.*
+> *Compose reactive state and lazy derivations as a pipeline of connected nodes.*
 
 **Coralline** is a Dart reactive pipeline library. Its name for the core model is **CORAL** (**C**hain **o**f **R**eactivity **A**nd **L**azy-computation): source changes invalidate dependent values, while derived values are read and computed on demand. The core package does not depend on Flutter; `coralline_flutter` provides the Flutter integration.
 
@@ -85,35 +84,39 @@ void main() {
 }
 ```
 
-#### 2. Async Data & Pattern Matching
+#### 2. Async Data & Snapshot State Handling
 
 ```dart
-final searchController = CoralController<String>('');
+Future<String> fetchSearchResults(String query) async => 'Results for $query';
 
-// Async pipeline with cascade and toCoral()
-final searchResults = searchController.coral.cascade((query) {
-  return fetchSearchResults(query).toCoral();
-});
+void main() {
+  final searchController = CoralController<String>('');
 
-late final CoralTerminal<String> terminal;
-terminal = searchResults.toTerminal(() {
-  final snapshot = terminal.snapshot;
-  if (snapshot.isValid) {
-    print('Results: ${snapshot.data}');
-  } else if (snapshot.isEmpty) {
-    print('Type a search query...');
-  } else if (snapshot.isDamaged) {
-    print('Error loading results: ${snapshot.error}');
-  }
-});
-terminal.activate();
+  // Async pipeline with cascade and toCoral()
+  final searchResults = searchController.coral.cascade((query) {
+    return fetchSearchResults(query).toCoral();
+  });
+
+  late final CoralTerminal<String> terminal;
+  terminal = searchResults.toTerminal(() {
+    final snapshot = terminal.snapshot;
+    if (snapshot.isValid) {
+      print('Results: ${snapshot.data}');
+    } else if (snapshot.isEmpty) {
+      print('Loading search results...');
+    } else if (snapshot.isDamaged) {
+      print('Error loading results: ${snapshot.error}');
+    }
+  });
+  terminal.activate();
+}
 ```
 
-> **Tip: Do I need to write a `switch` statement for every snapshot?**  
-> Not at all! For routine UI displays or fallback defaults, ergonomic accessors handle it in a single line:
+> **Note: Ergonomic Snapshot Accessors**  
+> For routine UI displays or fallback defaults, snapshot accessors handle extraction in a single expression:
 > - **Fallback Default Value**: `final count = terminal.snapshot.dataOrElse(() => 0);`
 > - **Null Operator Convenience**: `final text = terminal.snapshot.dataOrNull?.toString() ?? 'Loading...';`
-> - **Direct Access on Guaranteed Sources**: `final data = controller.coral.data;`
+> - **Direct Access on Guaranteed Sources**: `final data = controller.data;`
 
 <br><br>
 
@@ -140,14 +143,14 @@ terminal.activate();
 
 ```dart
 // Recommended Pattern: Capture events via Stream, bind to Coralline via .toCoral()
-final Stream<Location> rawGpsStream = GpsSensor.stream();
+final Stream<(double, double)> rawGpsStream = Stream.value((37.5665, 126.9780));
 
 // The stream-backed Coral follows the lifecycle of its active downstream consumers.
-final Coral<Location> locationCoral = rawGpsStream.toCoral();
+final Coral<(double, double)> locationCoral = rawGpsStream.toCoral();
 
 // Derive a display value from each location update.
 final Coral<String> displayAddressCoral = locationCoral
-    .map((location) => AddressFormatter.format(location));
+    .map((coords) => 'Lat: ${coords.$1}, Lng: ${coords.$2}');
 ```
 
 <br><br>
@@ -157,14 +160,14 @@ final Coral<String> displayAddressCoral = locationCoral
 Beyond simple 1:1 pipelines, Coralline provides first-class declarative support for complex reactive graph topologies:
 
 #### 1. N:1 Multi-Source Convergence (`Trunk`)
-Bundles multiple independent upstream sources into a single computation. The converged value is derived from the connected inputs when read. Dirty results can be cached until an upstream change invalidates them.
+Bundles multiple independent upstream sources into a single computation. Using `aggregate`, `combine`, or `converge`, the downstream value is derived from the connected inputs when read. Dirty results can be cached until an upstream change invalidates them.
 
 ```mermaid
 graph TD
     A["Coral A"] --> T["Trunk.of([A, B])"]
     B["Coral B"] --> T
-    T --> Conv["converge((prices) => A + B)"]
-    Conv --> Term["CoralTerminal (UI)"]
+    T --> Agg["aggregate((lines) => A.data + B.data)"]
+    Agg --> Term["CoralTerminal (UI)"]
 ```
 
 #### 2. 1:N Multicast Sharing (`CoralBroadcaster`)

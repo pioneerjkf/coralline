@@ -30,9 +30,9 @@ extension CorallineDebugExtension on CoralNode {
   /// * In debug mode, the node is tagged and its creation stack trace is captured and stored externally.
   /// * When assertions are disabled, the capture closure does not run and metadata is not stored.
   ///
-  /// **Example:**
+  /// ## Examples
   /// ```dart
-  /// final myCoral = Coral('data')..debugTrace('MyNode', 2);
+  /// final myCoral = Coral.data('data')..debugTrace('MyNode', 2);
   /// ```
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
@@ -46,6 +46,9 @@ extension CorallineTerminalDebugExtension on CorallineTerminal {
   String? get debugCreationLocation => _debugLocations[this];
 
   /// (Debug Only) Captures the current stack trace and assigns an optional tag.
+  ///
+  /// * [tag]: An optional identifier for this terminal.
+  /// * [traceCount]: The number of call stack frames to keep (default: 5).
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
 
@@ -58,6 +61,9 @@ extension CoralControllerDebugExtension on CoralController {
   String? get debugCreationLocation => _debugLocations[this];
 
   /// (Debug Only) Captures the current stack trace and assigns an optional tag.
+  ///
+  /// * [tag]: An optional identifier for this controller.
+  /// * [traceCount]: The number of call stack frames to keep (default: 5).
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
 
@@ -70,6 +76,9 @@ extension CoralComputationDebugExtension on CoralComputation {
   String? get debugCreationLocation => _debugLocations[this];
 
   /// (Debug Only) Captures the current stack trace and assigns an optional tag.
+  ///
+  /// * [tag]: An optional identifier for this computation.
+  /// * [traceCount]: The number of call stack frames to keep (default: 5).
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
 
@@ -82,6 +91,9 @@ extension CoralBroadcasterDebugExtension on CoralBroadcaster {
   String? get debugCreationLocation => _debugLocations[this];
 
   /// (Debug Only) Captures the current stack trace and assigns an optional tag.
+  ///
+  /// * [tag]: An optional identifier for this broadcaster.
+  /// * [traceCount]: The number of call stack frames to keep (default: 5).
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
 
@@ -94,5 +106,8 @@ extension CoralCouplerDebugExtension on CoralCoupler {
   String? get debugCreationLocation => _debugLocations[this];
 
   /// (Debug Only) Captures the current stack trace and assigns an optional tag.
+  ///
+  /// * [tag]: An optional identifier for this coupler.
+  /// * [traceCount]: The number of call stack frames to keep (default: 5).
   void debugTrace([String? tag, int traceCount = 5]) => _captureDebugTrace(this, tag, traceCount);
 }
